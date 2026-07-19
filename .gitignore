@@ -33,3 +33,18 @@ dist-ssr
 latex/book.pdf
 latex/book.synctex(busy)
 
+
+# Untracked source folders and website files
+/latex/
+/book/
+/public/
+/src/
+/index.html
+/style.css
+/main.js
+/module1.html
+/module2.html
+/module3.html
+/module4.html
+/package.json
+/package-lock.json
