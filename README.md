@@ -7,8 +7,8 @@
 ---
 
 ## 📖 Access the Book
-The complete, compiled **87-page conceptual handbook** is available as a PDF in the root of this repository:
-👉 **[Download agentic_ai_book.pdf](./agentic_ai_book.pdf)**
+The complete, compiled **91-page conceptual handbook** is available as a PDF in the root of this repository:
+Refreshed PDF: 👉 **[Download agentic_ai_book.pdf](./agentic_ai_book.pdf)**
 
 ---
 
@@ -25,7 +25,7 @@ This repository implements a **dual-track learning framework**:
 ## 📁 Repository Structure
 
 ```bash
-├── agentic_ai_book.pdf  # The complete compiled 87-page book (PDF)
+├── agentic_ai_book.pdf  # The complete compiled 91-page book (PDF)
 ├── cover.png            # Front cover art
 └── coding-handbook/     # Companion Python implementations
     ├── README.md        # Lab index and quickstart guide
