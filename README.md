@@ -8,7 +8,7 @@
 
 ## 📖 Access the Book
 The complete, compiled **87-page conceptual handbook** is available as a PDF in the root of this repository:
-👉 **[Download book.pdf](./book.pdf)**
+👉 **[Download agentic_ai_book.pdf](./agentic_ai_book.pdf)**
 
 ---
 
@@ -17,7 +17,7 @@ The complete, compiled **87-page conceptual handbook** is available as a PDF in 
 Welcome to the definitive companion repository for **The Practitioner's Guide to Agentic AI** by **Umang Yadav & Antigravity**. 
 
 This repository implements a **dual-track learning framework**:
-1. **Conceptual & Architectural Track (`book.pdf`)**: A comprehensive textbook covering deep learning internals, cyclic execution models, sandboxed virtual environments, distributed tracing, economics, fine-tuning alignment, and interview prep.
+1. **Conceptual & Architectural Track (`agentic_ai_book.pdf`)**: A comprehensive textbook covering deep learning internals, cyclic execution models, sandboxed virtual environments, distributed tracing, economics, fine-tuning alignment, and interview prep.
 2. **Hands-on Lab Track (`coding-handbook/`)**: Self-contained, runnable Python code files implementing the core algorithms discussed in the book.
 
 ---
@@ -25,7 +25,7 @@ This repository implements a **dual-track learning framework**:
 ## 📁 Repository Structure
 
 ```bash
-├── book.pdf             # The complete compiled 87-page book (PDF)
+├── agentic_ai_book.pdf  # The complete compiled 87-page book (PDF)
 ├── cover.png            # Front cover art
 └── coding-handbook/     # Companion Python implementations
     ├── README.md        # Lab index and quickstart guide
