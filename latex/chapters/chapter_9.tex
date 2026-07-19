@@ -1,0 +1,92 @@
+\chapter{The Model Context Protocol (JSON-RPC \& STDIO)}
+
+The Model Context Protocol (MCP) solves the N-to-N integration problem. Without MCP, you must manually stitch custom APIs into your Agent's tool payload. With MCP, you write isolated ``Servers.'' The Agent connects, negotiates capabilities, and dynamically fetches schemas.
+
+\section{The Client-Server Negotiation}
+
+MCP operates over standard transport layers: usually \texttt{stdio} for local processes. The protocol is strictly \textbf{JSON-RPC 2.0}.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    scale=0.85, transform shape,
+    node distance=4cm,
+    auto,
+    actor/.style={draw, rectangle, minimum height=0.7cm, minimum width=2.5cm, fill=gray!20},
+    msg/.style={thick,->,>=stealth}
+]
+% Lifelines
+\node[actor] (client) {Agent (MCP Client)};
+\node[actor, right=of client, xshift=1.5cm] (server) {MCP Server (stdio)};
+
+\draw[dashed] (client) -- +(0,-5.5);
+\draw[dashed] (server) -- +(0,-5.5);
+
+% Messages
+\draw[msg] ($(client)+(0,-1)$) -- node[above, font=\footnotesize] {initialize (Client capabilities)} ($(server)+(0,-1)$);
+\draw[msg, dashed] ($(server)+(0,-1.5)$) -- node[above, font=\footnotesize] {result (Server capabilities)} ($(client)+(0,-1.5)$);
+
+\draw[msg] ($(client)+(0,-2.5)$) -- node[above, font=\footnotesize] {mcp.tools.list} ($(server)+(0,-2.5)$);
+\draw[msg, dashed] ($(server)+(0,-3)$) -- node[above, font=\footnotesize] {result: [\{name: "query\_db"\}]} ($(client)+(0,-3)$);
+
+\draw[msg] ($(client)+(0,-4.5)$) -- node[above, font=\footnotesize] {mcp.tools.call (query\_db)} ($(server)+(0,-4.5)$);
+\draw[msg, dashed] ($(server)+(0,-5)$) -- node[above, font=\footnotesize] {result: \{content: [...]\}} ($(client)+(0,-5)$);
+
+\end{tikzpicture}
+\caption{MCP JSON-RPC Lifecycle}
+\end{figure}
+
+\section{JSON-RPC 2.0 Error Standards in MCP}
+
+When tool execution fails or the server encounters a serialization error, the MCP Server must return a valid JSON-RPC 2.0 error object. Standardizing these codes allows client orchestrators to handle tool exceptions programmatically.
+
+The standard error-code mappings are:
+\begin{itemize}
+    \item \textbf{\texttt{-32700} (Parse Error):} Invalid JSON received by the server. An agent sent a malformed payload.
+    \item \textbf{\texttt{-32600} (Invalid Request):} The sent JSON is not a valid Request object.
+    \item \textbf{\texttt{-32601} (Method Not Found):} The requested method does not exist on this server. Useful for the client to detect missing server features.
+    \item \textbf{\texttt{-32602} (Invalid Params):} The tool arguments do not match the JSON Schema defined in \texttt{tools/list}. The client should feed this error back to the LLM to trigger self-correction.
+    \item \textbf{\texttt{-32603} (Internal Error):} Internal JSON-RPC error.
+\end{itemize}
+
+An error payload returned by the server looks like:
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch09\_mcp/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{The Exact JSON-RPC Lifecycle}
+
+\subsection{1. The Initialization Request (Client $\to$ Server)}
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch09\_mcp/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\subsection{2. The Tool List Request}
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch09\_mcp/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\subsection{3. The Server Response}
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch09\_mcp/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+

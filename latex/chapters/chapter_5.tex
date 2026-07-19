@@ -1,0 +1,98 @@
+\chapter{Embeddings \& Asymmetric Search}
+
+To understand how an agent queries a massive codebase, you must understand the exact geometry of vector spaces and the distinction between Symmetric and Asymmetric search.
+
+\section{Mathematical Metrics of Vector Similarity}
+
+When retrieving context, similarity is computed using distance metrics in $\mathbb{R}^d$ space. The three primary metrics used in RAG systems are:
+
+\subsection{1. Cosine Similarity}
+Measures the cosine of the angle between two vectors $A$ and $B$, ignoring magnitude:
+\begin{equation}
+\text{Cosine}(A, B) = \frac{A \cdot B}{\|A\| \|B\|} = \frac{\sum_{i=1}^d A_i B_i}{\sqrt{\sum_{i=1}^d A_i^2} \sqrt{\sum_{i=1}^d B_i^2}}
+\end{equation}
+Values range from $-1$ (opposite directions) to $1$ (same direction).
+
+\subsection{2. Dot Product (Inner Product)}
+Computes the raw alignment of vectors. Unlike Cosine Similarity, it is sensitive to vector magnitude:
+\begin{equation}
+\text{Dot}(A, B) = A \cdot B = \sum_{i=1}^d A_i B_i
+\end{equation}
+\textbf{The Optimization Trick:} If vector embeddings are pre-normalized to unit length ($\|A\| = \|B\| = 1$), the denominator of the Cosine Similarity equation becomes 1. Thus, Cosine Similarity is mathematically equivalent to the Dot Product:
+\begin{equation}
+\text{Cosine}(A, B) = A \cdot B \quad (\text{for normalized vectors})
+\end{equation}
+This allows high-performance vector DBs to omit floating-point divisions and square roots, accelerating queries by orders of magnitude.
+
+\subsection{3. Euclidean Distance ($L_2$ Distance)}
+Measures the straight-line distance between two points in Euclidean space:
+\begin{equation}
+\text{L}_2(A, B) = \|A - B\|_2 = \sqrt{\sum_{i=1}^d (A_i - B_i)^2}
+\end{equation}
+For unit-normalized vectors, $L_2$ distance is directly related to the Dot Product:
+\begin{equation}
+\|A - B\|_2^2 = \|A\|_2^2 + \|B\|_2^2 - 2(A \cdot B) = 2 - 2(A \cdot B)
+\end{equation}
+Minimizing the $L_2$ distance is mathematically equivalent to maximizing the Dot Product similarity.
+
+\section{Symmetric vs. Asymmetric Search Spaces}
+
+RAG systems fail because developers use the wrong search paradigm.
+
+\subsection{Symmetric Search}
+The query and the document are of similar length and structure.
+\textit{Example:} Comparing the similarity of two news articles.
+
+\subsection{Asymmetric Search (Agentic Standard)}
+The query is very short, and the document is very long.
+\begin{itemize}
+    \item \textbf{Query:} ``Where is the database connection?'' (6 words)
+    \item \textbf{Document:} A 500-line \texttt{psycopg2} Python file.
+\end{itemize}
+
+\textbf{The Mathematical Collapse:} If you embed a 6-word question, its vector $Q$ will point toward ``question-like'' semantics in the vector space. If you embed a 500-line code file, its vector $D$ points toward ``Python code syntax'' semantics. Because they occupy different manifolds, the cosine similarity $\cos(Q, D)$ will collapse.
+
+To fix this, modern embeddings are trained using a **Bi-Encoder** structure with a contrastive objective (e.g. InfoNCE Loss) that pulls short queries and matching long documents together:
+\begin{equation}
+\mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp(\text{sim}(Q, D^+)/\tau)}{\sum_{j} \exp(\text{sim}(Q, D_j)/\tau)}
+\end{equation}
+where $D^+$ is the correct matching document, $D_j$ are negative documents in the batch, and $\tau$ is a temperature hyperparameter.
+
+\section{The Solution: HyDE (Hypothetical Document Embeddings)}
+
+To bypass training custom bi-encoders, advanced agents implement HyDE.
+
+\begin{enumerate}
+    \item \textbf{User asks:} ``Where is the DB connection?''
+    \item \textbf{Agent LLM generates a fake answer:} ``The DB connection is located in \texttt{src/db/connection.py} using \texttt{psycopg2.connect(...)}.''
+    \item \textbf{Embed the fake answer:} We create a vector from the LLM's hallucinated response.
+    \item \textbf{Vector Search:} We use the \textit{fake answer's vector} to search the Vector DB. Because the fake answer matches the length and structure of real code, the Cosine Similarity calculation is highly accurate.
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    scale=0.85, transform shape,
+    node distance=1.3cm,
+    box/.style={draw, rectangle, rounded corners, minimum height=0.7cm, align=center, fill=blue!10},
+    arrow/.style={thick,->,>=stealth}
+]
+\node (q) [box] {User Query: Short text};
+\node (ans) [box, below=of q] {LLM Generates Fake Answer};
+\node (embed) [box, below=of ans] {Embed Fake Answer into Vector $V_{\text{fake}}$};
+\node (search) [box, below=of embed] {Vector DB: Find nearest to $V_{\text{fake}}$};
+\node (ret) [box, fill=green!20, below=of search] {Retrieve Actual Code Files};
+
+\draw [arrow] (q) -- (ans);
+\draw [arrow] (ans) -- (embed);
+\draw [arrow] (embed) -- (search);
+\draw [arrow] (search) -- (ret);
+\end{tikzpicture}
+\caption{HyDE Search Pipeline}
+\end{figure}
+\section{VRAM footprint of Embeddings}
+For an index of 10,000 files chunked into 5 pieces (50,000 vectors) at 3,072 dimensions, storing raw 32-bit floats requires:
+\begin{equation}
+50,000 \times 3,072 \times 4 \text{ bytes} \approx 614.4 \text{ MB of RAM}
+\end{equation}
+Which is highly practical to run in memory on standard CPU instances.

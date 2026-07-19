@@ -1,0 +1,173 @@
+\chapter{The Anatomy of an LLM}
+
+\begin{quote}
+\textit{``In late 2023, a production coding copilot serving 40,000 engineers at a mid-sized tech company started hallucinating every fifteenth tool call — consistently, reproducibly, always the fifteenth. The error logs showed nothing wrong. The model weights were untouched. Three days of debugging later, an infrastructure engineer discovered the root cause: a Grouped-Query Attention misconfiguration in their self-hosted vLLM cluster was silently reusing stale KV cache entries from a previous user's session. The model was literally finishing someone else's thoughts.''}
+\end{quote}
+
+This story is not a cautionary tale about AI being dangerous. It is a cautionary tale about engineers who did not understand what they were running. The LLM is not magic. It is a deterministic, hardware-bound matrix computation engine that happens to produce remarkably human-sounding output. When you treat it as magic, bugs like this take three days to find. When you understand its architecture at the level of VRAM blocks and attention head projections, you find it in ten minutes.
+
+This chapter is the foundation of everything that follows. We will build a complete mental model of exactly what happens from the moment a user types a character to the moment a token is generated — at the level of hardware, mathematics, and memory.
+
+\section{What Actually Happens When You Call an LLM API}
+
+When your orchestrator calls \texttt{openai.chat.completions.create(...)}, the following sequence occurs on the provider's GPU cluster in approximately 200--800 milliseconds:
+
+\begin{enumerate}
+    \item Your input text is \textbf{tokenized} into a sequence of integer IDs using a learned vocabulary.
+    \item Each token ID is mapped to a high-dimensional vector (the \textbf{embedding}).
+    \item The embedding sequence is passed through $N$ \textbf{Transformer decoder layers}, each applying masked self-attention and a feed-forward network.
+    \item The output of the final layer is projected into vocabulary space and passed through a \textbf{softmax} to produce a probability distribution.
+    \item One token is \textbf{sampled} from this distribution and appended to the sequence.
+    \item Steps 3--5 repeat, autoregressively, until an end-of-sequence token or a stop condition is met.
+\end{enumerate}
+
+Every agent failure — hallucination, context overflow, schema violation, infinite loop — maps to a specific failure in one of these six steps. This is the mental model you need.
+
+\section{Tokenization: The Foundation of Agent Reliability}
+
+LLMs do not process text. They process integers. The mapping between text and integers is defined by a learned \textbf{vocabulary}, constructed using the Byte-Pair Encoding (BPE) algorithm.
+
+\subsection{How BPE Works}
+BPE starts with individual bytes and iteratively merges the most frequent byte-pair in the corpus into a single token. After 100,000 merges (the vocabulary size of cl100k\_base used by GPT-4), common English words map to single tokens, while rare strings fragment into many.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch01\_llm\_anatomy/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\textbf{The agent implication is profound.} If you instruct your agent to output a custom XML schema format with unusual tag names, you are fragmenting its output into many low-confidence tokens. Each fragmentation step introduces a small probability of error. Over a 2,000-token tool call response, these probabilities compound. This is why standard JSON formats dramatically outperform custom schemas for agentic tool calling — not because JSON is special, but because its patterns are heavily represented in the training corpus and map to efficient, high-confidence token sequences.
+
+\section{The Transformer Decoder Architecture}
+
+Modern LLMs (GPT-4, Llama-3, Claude) all share a Decoder-only Transformer architecture. Understanding its data flow lets you reason about where failures occur.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    scale=0.82, transform shape,
+    node distance=0.55cm and 1cm,
+    box/.style={draw, rectangle, rounded corners, minimum width=5.2cm, minimum height=0.65cm, align=center, fill=blue!8, font=\small},
+    greenbox/.style={draw, rectangle, rounded corners, minimum width=5.2cm, minimum height=0.65cm, align=center, fill=green!10, font=\small},
+    yellowbox/.style={draw, rectangle, rounded corners, minimum width=5.2cm, minimum height=0.65cm, align=center, fill=yellow!15, font=\small},
+    redbox/.style={draw, rectangle, rounded corners, minimum width=5.2cm, minimum height=0.65cm, align=center, fill=red!10, font=\small},
+    purplebox/.style={draw, rectangle, rounded corners, minimum width=5.2cm, minimum height=0.65cm, align=center, fill=purple!10, font=\small},
+    arrow/.style={thick,->,>=stealth}
+]
+\node (tokens) [box] {Input Tokens: integer IDs};
+\node (embed) [box, below=of tokens] {Embedding Lookup: $\mathbb{R}^{T \times d_{\text{model}}}$};
+\node (rope) [box, below=of embed] {RoPE Positional Encoding};
+\node (res1) [greenbox, below=of rope] {Residual Gate};
+\node (ln1) [yellowbox, below=of res1] {RMSNorm (Pre-Attention)};
+\node (attn) [redbox, below=of ln1] {Masked Grouped-Query Attention (GQA)};
+\node (res2) [greenbox, below=of attn] {Residual Add: $x \leftarrow x + \text{Attn}(x)$};
+\node (ln2) [yellowbox, below=of res2] {RMSNorm (Pre-FFN)};
+\node (ffn) [purplebox, below=of ln2] {SwiGLU Feed-Forward Network};
+\node (res3) [greenbox, below=of ffn] {Residual Add: $x \leftarrow x + \text{FFN}(x)$};
+\begin{pgfonlayer}{background}
+\node[draw, dashed, thick, inner sep=0.3cm, fill=gray!2, fit=(ln1)(res3),
+  label=left:\rotatebox{90}{\small\textbf{$\times$ N Decoder Layers}}] {};
+\end{pgfonlayer}
+\node (lnf) [yellowbox, below=of res3, yshift=-0.4cm] {Final RMSNorm};
+\node (proj) [box, below=of lnf] {Linear Unembedding: $\mathbb{R}^{d_{\text{model}}} \to \mathbb{R}^{|\text{Vocab}|}$};
+\node (soft) [box, below=of proj] {Softmax + Temperature Scaling};
+\node (out) [draw, rectangle, rounded corners, minimum width=5.2cm, minimum height=0.65cm, fill=blue!25, below=of soft, font=\small\bfseries] {Next Token Sampled};
+\foreach \a/\b in {tokens/embed, embed/rope, rope/res1, res1/ln1, ln1/attn, attn/res2, res2/ln2, ln2/ffn, ffn/res3, res3/lnf, lnf/proj, proj/soft, soft/out}
+  \draw[arrow] (\a) -- (\b);
+\end{tikzpicture}
+\caption{Complete Data Flow of a Decoder-only Transformer. Each Transformer layer processes the full sequence in parallel before passing to the next.}
+\end{figure}
+
+\subsection{Why Residual Connections Are the Key to Deep Networks}
+Without residual connections (the green nodes), gradient signals would vanish by layer 20 of a 80-layer model. The residual ``skip'' connection allows gradients to flow directly from the output all the way back to early layers during training, enabling models with hundreds of layers to converge.
+
+\section{Attention Variant Math: MHA, MQA, and GQA}
+
+This is where the production incident from our opening story lives. The choice of attention variant determines your VRAM consumption, your inference latency, and critically, how the KV cache is structured.
+
+Let $X \in \mathbb{R}^{T \times d_{\text{model}}}$ be the input to the attention layer, with $T$ = sequence length.
+
+\subsection{Multi-Head Attention (MHA) — The Classic}
+In MHA, each of the $h$ attention heads has \textit{independent} projection matrices:
+\begin{align}
+Q_i &= X W_Q^i, \quad K_i = X W_K^i, \quad V_i = X W_V^i \quad \forall i \in \{1,\dots,h\}
+\end{align}
+where $W_Q^i, W_K^i, W_V^i \in \mathbb{R}^{d_{\text{model}} \times d_k}$, and $d_k = d_{\text{model}} / h$.
+
+\textbf{KV Cache Size:} Storing all $K$ and $V$ matrices for all $h$ heads across $L$ layers:
+\begin{equation}
+\text{Cache}_{\text{MHA}} = 2 \times T \times L \times h \times d_k \times \text{bytes}
+\end{equation}
+
+\subsection{Grouped-Query Attention (GQA) — The Production Standard}
+GQA partitions the $h$ query heads into $g$ groups. All query heads in a group share a single $K$ and $V$ projection:
+\begin{align}
+Q_{j,k} &= X W_Q^{j,k} \quad \text{(each head has its own } W_Q\text{)}\\
+K_j &= X W_K^j, \quad V_j = X W_V^j \quad \text{(shared per group } j\text{)}
+\end{align}
+where there are $g$ groups, so $h_{\text{KV}} = g \ll h$.
+
+\textbf{KV Cache Size with GQA:}
+\begin{equation}
+\text{Cache}_{\text{GQA}} = 2 \times T \times L \times g \times d_k \times \text{bytes}
+\end{equation}
+
+The memory reduction factor is $h/g$. For Llama-3-70B ($h=64$, $g=8$), this is an 8× reduction.
+
+\subsection{Worked Example: Llama-3-70B at 128k Context}
+\begin{align}
+\text{Cache}_{\text{GQA}} &= 2 \times 128{,}000 \times 80 \times 8 \times 128 \times 2 \\
+&= 2 \times 128{,}000 \times 163{,}840 \\
+&= 41.9 \text{ GB of VRAM}
+\end{align}
+This fits on a single A100 (80GB). With standard MHA ($h=64$): $\mathbf{335 \text{ GB}}$ — requiring a 5-GPU cluster.
+
+\textbf{Now you understand the production incident.} In the story above, the engineer had configured $g=64$ (no grouping) in the vLLM config file instead of $g=8$. The inference engine was allocating 8× more KV cache blocks than available. The kernel silently wrapped around and reused old cache pages from previous requests. The model was attending to another session's Keys and Values.
+
+\section{Scaled Dot-Product Attention — The Core Computation}
+
+\begin{equation}
+\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
+\end{equation}
+
+The $\sqrt{d_k}$ scaling factor is critical. Without it, for $d_k=128$, the dot products $QK^\top$ reach magnitudes of $\sim 128$, pushing the softmax into saturation where gradients vanish.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch01\_llm\_anatomy/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\subsection{The Attention Dilution Problem in Practice}
+The softmax output is a \textit{probability distribution} — it must sum to exactly 1.0. If your agent loads 50 files of context, the model's attention budget is spread across all of them. The relevant function might receive only 2\% of the attention weight. This is mathematically why context stuffing degrades agent accuracy even when the answer is technically present in the prompt.
+
+\section{Prompt Caching: The Economics of Repeated Prefills}
+
+In production agentic systems, the system prompt, tool schemas, and RAG content are repeated on every LLM call. A 10,000-token system prompt on 1,000 daily calls costs \$300/day in OpenAI input tokens alone. Prompt caching eliminates 90\% of this cost.
+
+\subsection{How Prefix Caching Works}
+The inference engine partitions incoming prompts into fixed-size blocks of $B=1024$ tokens. Each block is fingerprinted:
+\begin{equation}
+H_i = \text{SHA256}(t_1, t_2, \dots, t_{i \cdot B})
+\end{equation}
+
+On a cache hit, the pre-computed $K$ and $V$ tensors for that block are loaded directly from GPU memory. The prefill computation is skipped entirely for that block.
+
+\textbf{Complexity:} Full prefill is $O\!\left((L_c + L_u)^2\right)$. With caching, only the $L_u$ new tokens require computation: $O\!\left(L_u^2\right)$.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch01\_llm\_anatomy/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\textbf{Design rule:} Always put your system prompt and static tool schemas \textit{first} in the message array, and user-specific dynamic content \textit{last}. Cache hits require exact prefix matches — any mutation in early tokens invalidates all subsequent blocks.

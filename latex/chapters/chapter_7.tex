@@ -1,0 +1,115 @@
+\chapter{Context Assembly (Token Budgeting \& Speculative Decoding)}
+
+Cursor is widely considered the best AI IDE in the world. Its secret is the \textbf{Orchestrator Backend}, which dynamically assembles a context window optimized to the exact token limit.
+
+\section{The Cursor Backend Architecture}
+
+Below is the scaled diagram of the context routing loop, showing how inputs flow through the prioritizer to feed the model.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    scale=0.8, transform shape,
+    node distance=0.6cm and 1.2cm,
+    box/.style={draw, rectangle, rounded corners, minimum height=0.7cm, align=center, fill=blue!10},
+    arrow/.style={thick,->,>=stealth}
+]
+
+% Client Group
+\node (file) [box] {Active File Editor};
+\node (linter) [box, below=of file] {Diagnostics/Linter};
+\node (term) [box, below=of linter] {Terminal Output};
+
+\begin{pgfonlayer}{background}
+\node[draw, dashed, inner sep=0.2cm, fill=gray!3, fit=(file) (linter) (term), label=above:\textbf{Client (IDE)}] (client) {};
+\end{pgfonlayer}
+
+% Orchestrator Group
+\node (budget) [box, fill=yellow!20, right=of linter, xshift=1.5cm] {Token Budget Allocator};
+\node (rag) [box, fill=green!20, above=of budget] {RAG / Fuzzy Search};
+\node (compiler) [box, fill=purple!20, below=of budget] {Prompt Compiler};
+
+\begin{pgfonlayer}{background}
+\node[draw, dashed, inner sep=0.2cm, fill=gray!3, fit=(rag) (budget) (compiler), label=above:\textbf{Orchestrator}] (orch) {};
+\end{pgfonlayer}
+
+% LLM Group
+\node (llm) [box, fill=red!20, right=of budget, xshift=1.5cm] {Claude 3.5 / GPT-4o};
+
+% Arrows
+\draw[arrow] (file.east) -- (budget.west);
+\draw[arrow] (linter.east) -- (budget.west);
+\draw[arrow] (term.east) -- (budget.west);
+\draw[arrow] (rag.south) -- (budget.north);
+\draw[arrow] (budget.south) -- node[right, font=\footnotesize] {Prune} (compiler.north);
+\draw[arrow] (compiler.east) -- node[above, font=\footnotesize] {Prompt} (llm.west);
+
+\end{tikzpicture}
+\caption{Cursor Backend Context Assembly}
+\end{figure}
+
+\section{Fuzzy Search vs. Embeddings in IDEs}
+
+RAG systems in IDEs cannot rely solely on semantic embeddings.
+\begin{itemize}
+    \item \textbf{Embeddings:} Excel at conceptual search.
+    \item \textbf{Fuzzy Keyword Search (BM25 / Levenshtein):} Excel at exact-name searches (e.g. searching ``updateUserTokenV3'').
+\end{itemize}
+
+Production IDEs use a hybrid scoring system. They compute the semantic score ($S_{\text{semantic}}$) and a fuzzy keyword match score ($S_{\text{keyword}}$), then blend them:
+\begin{equation}
+S_{\text{final}} = \alpha S_{\text{semantic}} + (1 - \alpha) S_{\text{keyword}}
+\end{equation}
+where $\alpha \approx 0.6$. The Levenshtein distance $D(A,B)$ measures the edit distance between strings and is calculated using a dynamic programming matrix:
+\begin{equation}
+D(i,j) = \min \begin{cases}
+  D(i-1, j) + 1 \\
+  D(i, j-1) + 1 \\
+  D(i-1, j-1) + \text{cost}
+\end{cases}
+\end{equation}
+
+\section{Sliding Window Context \& Truncation Algorithms}
+
+When agent loops make successive roundtrips, context accumulates. If the token count exceeds the engine limits, older history must be pruned. Runtimes execute a **Sliding Window eviction queue**, prioritizing system files and diagnostics.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch07\_context\_assembly/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Speculative Decoding (Fast Diffs)}
+
+Because 90\% of a code edit involves rewriting identical lines of code, a smaller ``draft'' model guesses the next 10 tokens instantly. The large model then verifies all 10 tokens in a single forward pass. If they match, 10 tokens are generated simultaneously. This decreases code patch compilation latency significantly.
+
+\section{MemGPT-Style Episodic Memory Paging}
+
+While simple sliding windows prevent out-of-token errors, they destroy historical relationships. Production agents require long-term state awareness, which is achieved by modeling memory as an Operating System memory hierarchy.
+
+\subsection{Memory Tiers}
+The agent's memory is divided into three logical tiers:
+\begin{itemize}
+    \item \textbf{Core Memory (RAM):} Placed directly inside the system prompt window. Contains user schemas and the agent's current state. Hard-budgeted (e.g., 2,000 tokens).
+    \item \textbf{Recall Memory (Swap Space):} Vector-indexed logs of all past chats. Queried on-demand.
+    \item \textbf{Archival Memory (Disk):} Cold, key-value flat files containing static rules and domain facts.
+\end{itemize}
+
+\subsection{Active Memory Operations}
+Instead of relying on the system to retrieve facts automatically, the agent acts as the memory controller. It executes specialized tool functions to modify its own RAM:
+\begin{align}
+\text{edit\_core\_memory(key, val)} &\implies \text{Updates value in system prompt window.} \\
+\text{search\_recall\_memory(query)} &\implies \text{Searches database chat logs.} \\
+\text{write\_to\_archival(key, fact)} &\implies \text{Saves long-term cold facts.}
+\end{align}
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch07\_context\_assembly/episodic\_paged\_memory.py}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+

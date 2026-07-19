@@ -1,0 +1,129 @@
+\chapter{The ReAct Paradigm (Network \& Execution Architecture)}
+
+\begin{quote}
+\textit{``On a Tuesday morning in 2024, an autonomous database maintenance agent was given a seemingly simple task: 'Clean up orphaned foreign key references in the user\_accounts table.' Nine hours later, an engineer arrived at the office to find the agent still running — 847 LLM calls, \$312 in API costs, and a database schema that was arguably worse than when it started. The agent had entered a repair loop: it would write SQL, the SQL would fail with a foreign key constraint error, it would re-read the schema, write new SQL, which would fail with a slightly different constraint error. Over and over. The agent was not broken. It was doing exactly what it was programmed to do — it just had no way to recognize that it was going in circles.''}
+\end{quote}
+
+This chapter is about the ReAct loop: the core execution paradigm of every serious agentic system. We will build it correctly — with state tracking, loop detection, self-healing, and the exact network-level understanding of what happens inside each iteration.
+
+\section{The ReAct Paradigm: Why It Works}
+
+ReAct (Reasoning and Acting) was introduced in a 2022 paper from Google Brain. Its core insight is deceptively simple: \textit{language models reason better when they can think out loud before acting.}
+
+In standard completion, the model computes:
+\begin{equation}
+P(Y \mid X) = \prod_{i=1}^n P(y_i \mid y_{<i}, X)
+\end{equation}
+
+In ReAct, the model first generates a \textit{thought} sequence $Z$, then an action:
+\begin{equation}
+P(Z, A \mid X) = \underbrace{\prod_{j=1}^m P(z_j \mid z_{<j}, X)}_{\text{Thought: reasoning trace}} \cdot \underbrace{P(A \mid Z, X)}_{\text{Action: tool call}}
+\end{equation}
+
+By the time $A$ is generated, the model's KV cache holds the full reasoning trace $Z$. The attention mechanism distributes weight across logical steps rather than raw context. \textbf{This is why tool calls from models using Chain of Thought are dramatically more accurate than direct tool calls.}
+
+\section{The Production Orchestrator Loop}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    scale=0.82, transform shape,
+    node distance=0.9cm and 1.8cm,
+    actor/.style={draw, rectangle, rounded corners, minimum height=0.7cm, minimum width=2.2cm, fill=gray!15, font=\small},
+    msg/.style={->,>=stealth,thick},
+    note/.style={font=\tiny, midway, above}
+]
+\node[actor] (user) {User};
+\node[actor, right=3cm of user] (orch) {Orchestrator};
+\node[actor, right=3cm of orch] (llm) {LLM API};
+\node[actor, right=3cm of llm] (tool) {Tool};
+
+\foreach \n in {user, orch, llm, tool}
+  \draw[dashed, gray] (\n.south) -- ++(0,-7.5);
+
+\draw[msg] ($(user)+(0,-0.8)$) -- node[note] {User query + context} ($(orch)+(0,-0.8)$);
+\draw[msg] ($(orch)+(0,-1.4)$) -- node[note] {System prompt + history + tools schema} ($(llm)+(0,-1.4)$);
+\draw[msg, dashed, blue] ($(llm)+(0,-2.2)$) -- node[note] {Thought: "I should search orders..." + Action: \{search\}} ($(orch)+(0,-2.2)$);
+\draw[msg] ($(orch)+(0,-3)$) -- node[note] {Validate + execute tool call} ($(tool)+(0,-3)$);
+\draw[msg, dashed, green!50!black] ($(tool)+(0,-3.8)$) -- node[note] {Observation: \{status: ok, data: [...]\}} ($(orch)+(0,-3.8)$);
+\draw[msg] ($(orch)+(0,-4.6)$) -- node[note] {Append observation to history} ($(llm)+(0,-4.6)$);
+\draw[msg, dashed, blue] ($(llm)+(0,-5.4)$) -- node[note] {Thought: "I have the data..." + Final: "Order \#1234..."} ($(orch)+(0,-5.4)$);
+\draw[msg, dashed] ($(orch)+(0,-6.2)$) -- node[note] {Formatted final answer} ($(user)+(0,-6.2)$);
+
+\end{tikzpicture}
+\caption{The ReAct Orchestrator sequence. Solid arrows = outbound requests. Dashed = responses. Note that the LLM is called \textit{twice}: once for action selection, once for final synthesis after observation.}
+\end{figure}
+
+\section{The ReActState: Never Lose Track of What the Agent Knows}
+
+The most common mistake in production agent implementations is storing only the message list. This makes debugging nearly impossible. A proper state object tracks \textit{everything}:
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch03\_react/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\textbf{This class would have prevented the incident in our opening story.} The loop detection would have caught the repeated failing SQL action by the third iteration and raised a \texttt{RuntimeError}. The cost cap would have terminated execution after spending a configurable threshold, alerting engineers.
+
+\section{Self-Healing Compiler Diagnostic Loop}
+
+When an agent writes code that fails to compile, a naive runtime crashes. A production runtime intercepts the failure, formats the diagnostic, and gives the LLM a second chance — but with a strict limit.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    scale=0.85, transform shape,
+    node distance=0.8cm and 1.5cm,
+    box/.style={draw, rectangle, rounded corners, minimum height=0.7cm,
+      minimum width=3cm, align=center, fill=blue!8, font=\small},
+    errbox/.style={draw, rectangle, rounded corners, minimum height=0.7cm,
+      minimum width=3cm, align=center, fill=red!10, font=\small},
+    okbox/.style={draw, rectangle, rounded corners, minimum height=0.7cm,
+      minimum width=3cm, align=center, fill=green!10, font=\small},
+    decisionnode/.style={draw, shape=diamond, aspect=2.2, align=center, fill=yellow!15, font=\small},
+    arrow/.style={thick,->,>=stealth}
+]
+\node (write) [box] {Agent writes code};
+\node (compile) [box, below=of write] {Compile / Lint / Run};
+\node (check) [decisionnode, below=of compile] {Errors?};
+\node (ok) [okbox, below=of check] {Write to disk\\Continue loop};
+\node (limit) [decisionnode, right=1.8cm of check] {Attempts $<$ 3?};
+\node (inject) [errbox, above=of limit, yshift=0.8cm] {Format traceback\\inject into context};
+\node (fail) [errbox, below=of limit] {Abort + alert};
+
+\draw[arrow] (write) -- (compile);
+\draw[arrow] (compile) -- (check);
+\draw[arrow] (check) -- node[left,font=\footnotesize] {No} (ok);
+\draw[arrow] (check) -- node[above,font=\footnotesize] {Yes} (limit);
+\draw[arrow] (limit) -- node[right,font=\footnotesize] {Yes} (inject);
+\draw[arrow] (limit) -- node[right,font=\footnotesize] {No} (fail);
+\draw[arrow] (inject) -- (write);
+\end{tikzpicture}
+\caption{Self-healing execution loop. Crucially, the ``Yes'' path wraps back to the code-writing step — not to the LLM call. The LLM must be given the new prompt before retrying.}
+\end{figure}
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch03\_react/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Network Resilience: Exponential Backoff with Jitter}
+
+Every production orchestrator must handle rate limits (HTTP 429) and transient network errors gracefully. The naive approach — a fixed \texttt{time.sleep(1)} — causes synchronized retry storms when multiple agents hit a limit simultaneously. The solution is \textit{full jitter exponential backoff}:
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch03\_react/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+

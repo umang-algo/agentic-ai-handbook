@@ -1,0 +1,136 @@
+\chapter{Production Economics \& Latency Engineering}
+
+\begin{quote}
+\textit{``A startup built a beautiful multi-agent customer support system. It could handle complex queries, retrieve relevant policies, escalate to specialists, and draft professional responses. In the beta, users loved it. Then they ran the numbers. Each query cost \$0.47 on average — across 800 support tickets a day, that was \$11,000 per month in API costs, compared to \$3,200 per month for the human agents they were replacing. The agent was technically superior and economically unviable. They had solved the AI problem and failed the business problem.''}
+\end{quote}
+
+No matter how brilliant your agent's architecture, it will be shut down if it costs too much or responds too slowly. This chapter provides the quantitative framework for designing agents that fit within real business constraints.
+
+\section{The Economics of LLM Token Costs}
+
+\subsection{Pricing Landscape (Mid-2025)}
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Input \$/M} & \textbf{Output \$/M} & \textbf{Context} & \textbf{Cached Input} \\
+\hline
+GPT-4o & \$2.50 & \$10.00 & 128k & \$1.25 \\
+GPT-4o-mini & \$0.15 & \$0.60 & 128k & \$0.075 \\
+Claude 3.5 Sonnet & \$3.00 & \$15.00 & 200k & \$0.30 \\
+Claude 3 Haiku & \$0.25 & \$1.25 & 200k & \$0.03 \\
+Gemini 1.5 Pro & \$1.25 & \$5.00 & 1M & \$0.3125 \\
+Gemini 1.5 Flash & \$0.075 & \$0.30 & 1M & \$0.01875 \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Task Cost Formula}
+For a ReAct agent that makes $K$ LLM calls, with iteration $k$ having input token count $T_k^{\text{in}}$ and output $T_k^{\text{out}}$:
+\begin{equation}
+C_{\text{task}} = \sum_{k=1}^{K} \left( \frac{T_k^{\text{in}} \cdot P^{\text{in}} + T_k^{\text{out}} \cdot P^{\text{out}}}{10^6} \right)
+\end{equation}
+
+Note that in a ReAct loop, the system prompt is repeated on every call. For a 5,000-token system prompt with $K=6$ iterations:
+\begin{equation}
+C_{\text{system}} = K \cdot 5000 \cdot \frac{P^{\text{in}}}{10^6} = 6 \times 5000 \times \frac{2.50}{10^6} = \$0.075 \text{ per task (GPT-4o)}
+\end{equation}
+
+With prompt caching (90\% hit rate), this drops to $\$0.0075$ — a 10$\times$ cost reduction from a single infrastructure change.
+
+\section{The Latency Budget: Where Time Is Spent}
+
+Every user-facing agent has an end-to-end latency that must fit within a Service Level Objective (SLO). A typical SLO for a responsive assistant is P95 $< 8$ seconds. Let us decompose where that time goes:
+
+\begin{equation}
+T_{\text{total}} = T_{\text{orchestration}} + \sum_{k=1}^{K} (T_{\text{prefill},k} + T_{\text{decode},k}) + \sum_{j=1}^{J} T_{\text{tool},j}
+\end{equation}
+
+\begin{center}
+\begin{tabular}{|l|r|l|}
+\hline
+\textbf{Component} & \textbf{Typical Duration} & \textbf{Optimization Lever} \\
+\hline
+Orchestration overhead & 5--20ms & Python async, avoid blocking I/O \\
+LLM prefill (2000 tokens) & 200--500ms & Prompt caching, smaller system prompt \\
+LLM decode (100 tokens) & 300--800ms & Streaming, smaller output schema \\
+Tool: web search & 800--2000ms & Parallel execution, caching \\
+Tool: DB query & 10--200ms & Connection pooling, indexes \\
+Tool: file I/O & 2--50ms & OS page cache, SSD \\
+Network round-trip & 20--100ms & Colocate agent with LLM endpoint \\
+\hline
+\textbf{Total (2-iteration)} & \textbf{2--8 seconds} & \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{The Short-Circuit Pattern: Hierarchical Model Routing}
+
+The most impactful architectural optimization in production agentic systems is \textit{hierarchical model routing}: use a cheap, fast model to classify and route requests, and only escalate to an expensive model when necessary.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    scale=0.82, transform shape,
+    node distance=0.9cm and 1.5cm,
+    box/.style={draw, rectangle, rounded corners, minimum height=0.7cm,
+      minimum width=2.5cm, align=center, fill=blue!8, font=\small},
+    costbox/.style={draw, rectangle, rounded corners, minimum height=0.55cm,
+      minimum width=2.5cm, align=center, font=\footnotesize},
+    routernode/.style={draw, shape=diamond, aspect=2.5, align=center, fill=yellow!15, font=\small},
+    arrow/.style={thick,->,>=stealth}
+]
+\node[box] (user) {User Query};
+\node[routernode, below=of user] (router) {Router LLM\\(Haiku, \$0.0002)};
+\node[box, fill=green!12, left=2.5cm of router] (simple) {Simple Handler\\(Flash, \$0.001)};
+\node[box, fill=orange!15, below=of router] (medium) {Standard Agent\\(GPT-4o-mini, \$0.01)};
+\node[box, fill=red!12, right=2.5cm of router] (complex) {Expert Agent\\(GPT-4o, \$0.15)};
+\node[costbox, below=of simple] {``What's the weather?''\\$\to$ FAQ lookup};
+\node[costbox, below=of medium] {``Summarize my emails''\\$\to$ ReAct (3 steps)};
+\node[costbox, below=of complex] {``Negotiate this contract''\\$\to$ Multi-agent, 20 steps};
+
+\draw[arrow] (user) -- (router);
+\draw[arrow] (router) -- node[above,font=\tiny] {complexity=low} (simple);
+\draw[arrow] (router) -- node[right,font=\tiny] {complexity=medium} (medium);
+\draw[arrow] (router) -- node[above,font=\tiny] {complexity=high} (complex);
+\end{tikzpicture}
+\caption{Short-circuit routing architecture. The router LLM classifies query complexity using a simple 3-class classification. Cost analysis: if 60\% of queries are ``low'', 30\% ``medium'', 10\% ``high'', blended cost drops from \$0.15 to \$0.019 per query — an 87\% reduction.}
+\end{figure}
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch16\_economics/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Streaming Architecture for Perceived Latency}
+
+Even if your agent takes 6 seconds to produce a complete response, users perceive it as fast if the first token arrives quickly. Streaming is the most impactful UX optimization for conversational agents.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch16\_economics/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{The ROI Framework: Building the Business Case}
+
+Before deploying any agent, compute its break-even point:
+
+\begin{equation}
+\text{Break-even Queries/Month} = \frac{C_{\text{infra}} + C_{\text{engineering}}}{C_{\text{human}} - C_{\text{agent per query}}}
+\end{equation}
+
+\textbf{Example calculation} for a customer support agent:
+\begin{itemize}
+    \item Human agent cost: \$0.85 per query (hourly rate / queries per hour)
+    \item AI agent cost: \$0.047 per query (with short-circuit routing + caching)
+    \item Monthly infra + engineering overhead: \$4,000
+    \item \textbf{Break-even}: $4000 / (0.85 - 0.047) \approx 4,980$ queries/month
+    \item At 800 queries/day (24,000/month): Net savings = $24000 \times (0.85 - 0.047) - 4000 = \mathbf{\$15,272}$/month
+\end{itemize}

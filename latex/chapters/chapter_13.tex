@@ -1,0 +1,105 @@
+\chapter{Enterprise Architectures \& Solution Design}
+
+Traditional software struggles with unstructured inputs (e.g. emails, logs). Agents solve this by acting as translators between unstructured data and structured code executions. 
+
+Below are three production-ready enterprise architectures, mapped with custom TikZ flowcharts.
+
+\section{Use Case 1: Autonomous Customer Service Query Routing}
+
+This architecture intercepts incoming customer support emails, extracts queries, executes sandboxed SQL queries to fetch order status, and generates personalized responses.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    scale=0.8, transform shape,
+    node distance=1cm and 1.5cm,
+    block/.style={draw, rectangle, rounded corners, minimum height=0.8cm, minimum width=3cm, align=center, fill=blue!10},
+    decision/.style={draw, diamond, aspect=2.5, align=center, fill=yellow!10},
+    arrow/.style={thick,->,>=stealth}
+]
+
+% Nodes
+\node (ticket) [block] {User Support Ticket};
+\node (router) [block, below=of ticket] {Router Agent (LLM)};
+\node (intent) [decision, below=of router] {Intent Classification?};
+\node (rag) [block, left=of intent, xshift=-1cm] {RAG Doc Retrieval};
+\node (sql) [block, right=of intent, xshift=1cm, fill=red!10] {Sandboxed SQL Writer};
+\node (run) [block, below=of sql] {Execute SQL Database Query};
+\node (eval) [block, below=of run] {Result Evaluator Agent};
+\node (comp) [block, below=of intent, yshift=-3.5cm, fill=green!10] {Response Compiler};
+
+% Links
+\draw[arrow] (ticket) -- (router);
+\draw[arrow] (router) -- (intent);
+\draw[arrow] (intent) -- node[above, font=\footnotesize] {Info Query} (rag);
+\draw[arrow] (intent) -- node[above, font=\footnotesize] {Order Lookup} (sql);
+\draw[arrow] (sql) -- (run);
+\draw[arrow] (run) -- (eval);
+\draw[arrow] (eval) -- (comp);
+\draw[arrow] (rag) |- (comp);
+
+\end{tikzpicture}
+\caption{Autonomous Support Routing Architecture}
+\end{figure}
+
+\section{Use Case 2: DevSecOps Vulnerability Patching Pipeline}
+
+This agentic pipeline connects to GitHub webhooks, parses static security alerts, uses an AST chunker to find buggy code, writes patches in an isolated sandbox, and runs tests before generating a PR.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    scale=0.8, transform shape,
+    node distance=1cm and 2cm,
+    block/.style={draw, rectangle, rounded corners, minimum height=0.8cm, minimum width=3.5cm, align=center, fill=green!10},
+    arrow/.style={thick,->,>=stealth}
+]
+
+% Nodes
+\node (webhook) [block, fill=gray!10] {GitHub Webhook (Alert)};
+\node (ast) [block, below=of webhook] {AST Parser (Find bug scope)};
+\node (agent) [block, below=of ast, fill=yellow!10] {Patching Agent (LLM)};
+\node (sandbox) [block, below=of agent, fill=red!10] {Sandboxed Local Build};
+\node (test) [block, below=of sandbox] {Unit Test Runner};
+\node (gate) [block, below=of test, fill=blue!10] {Create PR (GitHub API)};
+
+% Links
+\draw[arrow] (webhook) -- (ast);
+\draw[arrow] (ast) -- (agent);
+\draw[arrow] (agent) -- (sandbox);
+\draw[arrow] (sandbox) -- (test);
+\draw[arrow] (test) -- (gate);
+
+\end{tikzpicture}
+\caption{DevSecOps Self-Healing Pipeline}
+\end{figure}
+
+\section{Use Case 3: Financial Market Aggregator}
+
+This architecture compiles multi-page reports by dynamically fetching stock tickers, parsing quarterly PDF filings from SEC Edgar, executing code to generate charts, and outputting compiled reports.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    scale=0.8, transform shape,
+    node distance=0.8cm and 2cm,
+    block/.style={draw, rectangle, rounded corners, minimum height=0.7cm, minimum width=3.8cm, align=center, fill=purple!10},
+    arrow/.style={thick,->,>=stealth}
+]
+
+% Nodes
+\node (sec) [block] {SEC Edgar Edgar API};
+\node (chart) [block, below=of sec] {Chart Generator (Sandboxed)};
+\node (report) [block, below=of chart, fill=yellow!10] {Compilation Agent (LLM)};
+\node (compile) [block, below=of report] {LaTeX pdflatex Compiler};
+\node (output) [block, below=of compile, fill=green!10] {Output Market PDF};
+
+% Links
+\draw[arrow] (sec) -- (chart);
+\draw[arrow] (chart) -- (report);
+\draw[arrow] (report) -- (compile);
+\draw[arrow] (compile) -- (output);
+
+\end{tikzpicture}
+\caption{Autonomous Financial Compilation Flow}
+\end{figure}

@@ -1,0 +1,93 @@
+\chapter{Building a Vector Database (HNSW \& AST)}
+
+Computing the exact Cosine Similarity for every vector sequentially ($O(N)$) for every user prompt will take seconds or minutes when scaled to large datasets. 
+
+Production Vector DBs (Pinecone, Qdrant) solve this using \textbf{Approximate Nearest Neighbor (ANN)} search algorithms, notably \textbf{HNSW (Hierarchical Navigable Small World)}.
+
+\section{The HNSW Graph Search Algorithm}
+
+HNSW works similarly to a Skip List combined with a social network graph.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    scale=0.85, transform shape,
+    node distance=1.2cm and 0.8cm,
+    dot/.style={circle, draw, fill=blue!20, inner sep=2pt, minimum size=0.5cm},
+    edge/.style={thick}
+]
+
+% Layer 2
+\node[dot, fill=red!20] (A) at (0,4) {A};
+\node[right=of A, xshift=1.5cm] {Layer 2 (Highest - Entry Point)};
+
+% Layer 1
+\node[dot, fill=yellow!20] (B) at (-2,2) {B};
+\node[dot, fill=yellow!20] (C) at (2,2) {C};
+\node[right=of C, xshift=0.5cm] {Layer 1 (Medium Granularity)};
+
+\draw[edge] (A) -- (B);
+\draw[edge] (A) -- (C);
+
+% Layer 0
+\node[dot] (D) at (-3,0) {D};
+\node[dot] (E) at (-1,0) {E};
+\node[dot] (F) at (1,0) {F};
+\node[dot] (G) at (3,0) {G};
+\node[right=of G, xshift=0.5cm] {Layer 0 (Base Layer)};
+
+\draw[edge] (B) -- (D);
+\draw[edge] (B) -- (E);
+\draw[edge] (C) -- (F);
+\draw[edge] (C) -- (G);
+\draw[edge] (D) -- (E);
+\draw[edge] (F) -- (G);
+\draw[edge] (E) -- (F);
+
+\end{tikzpicture}
+\caption{HNSW Graph Search Layers}
+\end{figure}
+
+\subsection{Hyperparameters of HNSW}
+Configuring HNSW for code search requires tuning specific construction and search hyperparameters:
+\begin{itemize}
+    \item \textbf{$M$:} The maximum number of bi-directional connections established for each new node during index insertion. Standard values range from 8 to 64. Higher values increase accuracy on high-dimensional vectors (like code) at the cost of VRAM and build time.
+    \item \textbf{$M_{\text{max}}$:} The maximum number of connections allowed per node at Layer 0. Typically set to $2M$. If connections exceed this, prune links.
+    \item \textbf{$efConstruction$:} The size of the dynamic candidate list evaluated during index construction. A larger list creates a more dense graph, improving search recall but increasing build time.
+    \item \textbf{$efSearch$:} The size of the dynamic candidate list evaluated during query routing. Unlike construction parameters, $efSearch$ can be set dynamically at query time to trade off latency for recall.
+\end{itemize}
+
+\section{Graph RAG \& Episodic Memory Systems}
+
+Vector similarity searches match isolated content chunks, but fail at holistic relational queries (e.g., ``Find all files that import the `AuthHelper` class and call the `validate` function''). To resolve this, modern runtimes implement **Graph RAG**.
+
+Graph RAG models entities (files, classes, functions) as **Nodes**, and relationships (imports, inheritance, calls) as **Edges**. When querying, the engine traverses relational pathways in a graph database alongside semantic vector matches.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch06\_vector\_db/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+This graph-based indexing pattern enables the orchestrator to fetch entire dependency hierarchies, preventing compiler syntax crashes when importing modified library code.
+
+\section{Abstract Syntax Tree (AST) Chunking}
+
+Feeding a Vector DB arbitrary string chunks ruins semantic search. If a chunk splits a Python function in half, the vector is garbage.
+
+Production agents parse the \textbf{Abstract Syntax Tree (AST)} using libraries like \texttt{Tree-sitter} to chunk code exactly at the function/class level.
+
+\subsection{AST Chunking Implementation}
+Here is a complete, nested-aware Python AST parser that extracts class and function scopes with correct parent references.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch06\_vector\_db/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+

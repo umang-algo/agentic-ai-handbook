@@ -1,0 +1,143 @@
+\chapter{End-to-End Project: The GitHub Code Review Agent}
+
+\begin{quote}
+\textit{``The true test of a system is not whether it works in a demo — it is whether it holds together at 3 AM on a Friday when the oncall engineer is asleep, the CI pipeline has a flaky test, and four developers have pushed PRs simultaneously. Engineering is about systems that work when you are not watching.''}
+\end{quote}
+
+This final chapter builds a complete, production-hardened agent from scratch. We will not shortcut anything. By the end, you will have a deployable GitHub Code Review Agent that:
+\begin{enumerate}
+    \item Receives GitHub Pull Request webhooks via a FastAPI server
+    \item Parses changed files and uses an AST-aware chunker to identify semantically meaningful code units
+    \item Queries a vector database to find \textit{similar past bugs} from the project's history
+    \item Runs a specialized reviewer LLM that produces structured review comments
+    \item Posts comments directly to the GitHub PR using the GitHub API
+    \item Enforces a cost cap of \$0.05 per review and a latency SLO of P95 $< 30$ seconds
+\end{enumerate}
+
+\section{Architecture Overview}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    scale=0.78, transform shape,
+    node distance=0.9cm and 1.4cm,
+    box/.style={draw, rectangle, rounded corners, minimum height=0.7cm,
+      minimum width=2.5cm, align=center, fill=blue!8, font=\small},
+    dbbox/.style={draw, cylinder, shape border rotate=90, minimum height=0.9cm,
+      minimum width=2.2cm, align=center, fill=green!10, font=\small},
+    extbox/.style={draw, rectangle, rounded corners, minimum height=0.7cm,
+      minimum width=2.5cm, align=center, fill=gray!15, font=\small},
+    arrow/.style={thick,->,>=stealth}
+]
+% External systems
+\node[extbox] (gh_pr) at (-5, 0) {GitHub PR\\(Webhook)};
+\node[extbox] (gh_api) at (-5, -5.5) {GitHub API\\(Post Comments)};
+
+% Core pipeline
+\node[box, fill=purple!12] (webhook) at (0, 0) {FastAPI Webhook\\Handler};
+\node[box] (diff) at (0, -1.3) {Git Diff Parser\\+ AST Chunker};
+\node[box, fill=yellow!12] (retriever) at (0, -2.6) {Vector Retriever\\(Similar Bugs)};
+\node[box, fill=orange!12] (reviewer) at (0, -3.9) {Reviewer LLM\\(GPT-4o-mini)};
+\node[box] (formatter) at (0, -5.2) {Comment Formatter\\+ GitHub Poster};
+
+% Vector DB
+\node[dbbox] (vdb) at (3.5, -2.6) {Chroma DB\\(Bug History)};
+
+% Cost guard
+\node[box, fill=red!10] (guard) at (3.5, -3.9) {Cost Guard\\(\$0.05 cap)};
+
+% Arrows
+\draw[arrow] (gh_pr) -- node[above, font=\tiny] {POST /webhook} (webhook);
+\draw[arrow] (webhook) -- (diff);
+\draw[arrow] (diff) -- (retriever);
+\draw[arrow] (retriever) -- (reviewer);
+\draw[arrow] (reviewer) -- (formatter);
+\draw[arrow] (formatter) -- node[right, font=\tiny] {POST review} (gh_api);
+\draw[arrow, dashed] (retriever) -- node[above, font=\tiny] {embed + search} (vdb);
+\draw[arrow, dashed] (vdb) -- (retriever);
+\draw[arrow, dashed] (guard) -- node[right, font=\tiny] {check} (reviewer);
+
+\end{tikzpicture}
+\caption{GitHub Code Review Agent architecture. The dashed lines show side-channel operations (vector search and cost checking) that do not block the main data flow.}
+\end{figure}
+
+\section{Step 1: The Webhook Server}
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch18\_github\_agent/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Step 2: AST-Aware Code Chunking}
+
+Naive line-based chunking splits functions in half. AST-aware chunking respects Python syntax boundaries, producing semantically meaningful review units.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch18\_github\_agent/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Step 3: Semantic Bug Retrieval from History}
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch18\_github\_agent/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Step 4: The Reviewer LLM with Structured Output}
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch18\_github\_agent/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Step 5: Posting to GitHub \& Full Pipeline Assembly}
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch18\_github\_agent/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Production Hardening Checklist}
+
+Before deploying this agent to handle real production PRs, verify:
+
+\begin{center}
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{Requirement} & \textbf{Implemented?} & \textbf{Where} \\
+\hline
+Webhook signature verification & \ding{51} & \texttt{verify\_github\_signature()} \\
+Async background processing (no timeout) & \ding{51} & \texttt{BackgroundTasks} \\
+Cost cap per review & \ding{51} & \texttt{cost\_tracker} \\
+Max chunk limit & \ding{51} & \texttt{chunks[:10]} \\
+AST-aware chunking (no split functions) & \ding{51} & \texttt{ast\_chunk\_python\_file()} \\
+Idempotent review (no double-posting) & \ding{55} & Add SHA-based deduplication \\
+Observability (traces per PR) & \ding{55} & Add OpenTelemetry (Ch. 15) \\
+Rate limit handling (GitHub 5000 req/hr) & \ding{55} & Add \texttt{with\_backoff()} (Ch. 3) \\
+Secrets in environment (not hardcoded) & \ding{51} & \texttt{os.environ} \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{The two unchecked items} — idempotency and observability — are your homework. The patterns for both are fully covered in Chapter 3 (SHA hashing of action signatures) and Chapter 15 (OpenTelemetry tracing). A production-grade agent is an integration of all of the preceding chapters.

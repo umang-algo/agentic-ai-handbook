@@ -1,0 +1,45 @@
+# ===========================================
+# The Practitioner's Coding Handbook of Agentic AI
+# Shared Dependencies
+# ===========================================
+
+# Core LLM APIs
+openai>=1.30.0
+anthropic>=0.25.0
+
+# Vector Database
+chromadb>=0.5.0
+
+# Embeddings & ML
+numpy>=1.26.0
+torch>=2.2.0
+transformers>=4.40.0
+
+# Fine-Tuning (Ch 17)
+peft>=0.10.0
+trl>=0.8.0
+datasets>=2.19.0
+
+# Web Framework (Ch 18)
+fastapi>=0.111.0
+uvicorn>=0.29.0
+httpx>=0.27.0
+
+# Observability (Ch 15)
+opentelemetry-api>=1.24.0
+opentelemetry-sdk>=1.24.0
+opentelemetry-exporter-otlp>=1.24.0
+prometheus-client>=0.20.0
+
+# Data Processing
+pydantic>=2.7.0
+python-dotenv>=1.0.0
+
+# Visualization (optional)
+matplotlib>=3.8.0
+
+# AST & Code Analysis
+astunparse>=1.6.3
+
+# Async Support
+aiohttp>=3.9.0

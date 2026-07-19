@@ -1,0 +1,162 @@
+\chapter{The Code Interpreter (MicroVMs \& Firecracker)}
+
+\begin{quote}
+\textit{``A startup running a coding agent product discovered a critical breach vector in their infrastructure. Their agents were sandboxed in standard Docker containers. In a security audit, a penetration tester asked the agent to 'install the requests library and test my endpoint.' The agent ran \texttt{pip install requests} — which succeeded, because Docker containers share the host's network stack. The tester's endpoint was a data collection server. The agent then sent a POST request containing the contents of \texttt{/workspace/}, including the user's API keys stored in environment files. The Docker container had a virtual wall, but the network had an open door.''}
+\end{quote}
+
+Docker containers provide \textit{process isolation}, not \textit{machine isolation}. They share the host kernel. A Linux kernel exploit from AI-generated code does not just escape the container — it compromises the entire server, affecting every other tenant on the machine. For production agentic systems that execute arbitrary LLM-generated code, the only architecturally sound solution is hardware-level virtualization via \textbf{MicroVMs}.
+
+\section{The Threat Hierarchy: Why Docker Is Not Enough}
+
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Isolation Technology} & \textbf{Kernel Escape} & \textbf{Network Block} & \textbf{Boot Time} & \textbf{Memory Overhead} \\
+\hline
+No isolation & \ding{55} & \ding{55} & 0ms & 0 \\
+Docker (namespaces) & Possible & Partial & 50ms & $\sim$30MB \\
+gVisor (kernel intercept) & Very hard & Yes & 200ms & $\sim$100MB \\
+Firecracker MicroVM & Impossible & Yes (by design) & 125ms & $\sim$5MB \\
+Full QEMU VM & Impossible & Yes & 15--30s & $\sim$500MB \\
+\hline
+\end{tabular}
+\end{center}
+
+Firecracker is the winner: it achieves kernel-level isolation (full hardware virtualization via KVM) with near-Docker boot times and minimal memory overhead. It is deployed at scale by AWS Lambda and every major code execution service.
+
+\section{The Firecracker Architecture in Depth}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    scale=0.83, transform shape,
+    node distance=0.6cm and 1.5cm,
+    layer/.style={draw, rectangle, rounded corners, minimum width=8.5cm,
+      minimum height=0.7cm, align=center, font=\small},
+    sidenode/.style={draw, rectangle, rounded corners, minimum width=2cm,
+      minimum height=0.65cm, align=center, font=\footnotesize},
+    arrow/.style={thick,->,>=stealth}
+]
+\node[layer, fill=red!18] (ai_code) {AI-Generated Python Code (Untrusted)};
+\node[layer, fill=orange!15, below=of ai_code] (cpython) {CPython Interpreter};
+\node[layer, fill=yellow!18, below=of cpython] (guest_kernel) {Guest Linux Kernel (minimal, locked-down)};
+\node[layer, fill=green!12, below=of guest_kernel] (firecracker) {Firecracker VMM (Rust process on host)};
+\node[layer, fill=blue!8, below=of firecracker] (kvm) {Linux KVM (/dev/kvm, hardware-assisted)};
+\node[layer, fill=gray!20, below=of kvm] (bare) {Bare Metal Hardware};
+
+\begin{pgfonlayer}{background}
+  \node[draw, dashed, thick, inner sep=0.3cm, fill=red!3,
+    fit=(ai_code)(guest_kernel),
+    label=right:\rotatebox{-90}{\textbf{MicroVM (Hardware Boundary)}}] {};
+\end{pgfonlayer}
+
+\node[sidenode, fill=purple!12, right=1cm of firecracker] (jailer) {Jailer\\(cgroups)};
+\node[sidenode, fill=cyan!12, right=1cm of guest_kernel] (vsock) {virtio-vsock\\(host $\leftrightarrow$ guest)};
+\node[sidenode, fill=green!12, left=1cm of guest_kernel] (overlayfs) {OverlayFS\\(ephemeral disk)};
+
+\draw[arrow] (kvm) -- (firecracker);
+\draw[arrow] (firecracker) -- (guest_kernel);
+\draw[arrow] (guest_kernel) -- (cpython);
+\draw[arrow] (cpython) -- (ai_code);
+\draw[arrow, dashed] (jailer) -- (firecracker);
+\draw[arrow, dashed] (vsock) -- (guest_kernel);
+\draw[arrow, dashed] (overlayfs) -- (guest_kernel);
+\end{tikzpicture}
+\caption{Firecracker MicroVM isolation stack. The hardware boundary (KVM) means even a kernel exploit in the guest kernel cannot reach the host. All orchestrator-to-guest communication flows through the virtio-vsock, which the host fully controls.}
+\end{figure}
+
+\subsection{The Jailer: Mandatory Access Control on the VMM}
+The Firecracker VMM process itself is constrained by a ``jailer'' — a companion process that applies Linux \texttt{seccomp} filters and \texttt{cgroups} \textit{before} the VMM starts. Even if Firecracker itself had a bug, the jailer's seccomp whitelist prevents the VMM from making any syscall not explicitly permitted.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch08\_code\_interpreter/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{OverlayFS: Sub-10ms Environment Reset}
+
+The key to high-throughput code execution (serving thousands of concurrent agent sessions) is \textit{not} spawning a new VM for each execution. Instead, the filesystem is reset between executions using OverlayFS layering.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    scale=0.85, transform shape,
+    node distance=0.6cm and 2cm,
+    layer/.style={draw, rectangle, rounded corners, minimum width=5cm,
+      minimum height=0.6cm, align=center, font=\small},
+    arrow/.style={thick,->,>=stealth}
+]
+\node[layer, fill=gray!20] (base) {Base Layer (Read-Only):\\Ubuntu + Python 3.12 + stdlib};
+\node[layer, fill=blue!10, above=of base] (shared) {Shared Tools Layer (Read-Only):\\pip packages, runtime libs};
+\node[layer, fill=green!15, above=of shared] (session) {Session Layer (Ephemeral Write):\\New files, mutations};
+\node[layer, fill=red!10, above=of session] (code) {Agent Code Writes Here};
+\node[right=1.5cm of session, align=center] (merge) {\textbf{OverlayFS merges}\\all three layers\\transparently};
+\draw[arrow, dashed] (merge) -- (session);
+\node[right=1.5cm of base, align=center] (reset) {\textbf{Reset}: discard session\\layer in $< 10$ms.\\Base layers untouched.};
+\draw[arrow, dashed] (reset) -- (base);
+\end{tikzpicture}
+\caption{OverlayFS layer composition. The agent writes to the ephemeral session layer. On reset, only that layer is discarded — the base and shared layers persist across all sessions, making them instantaneously available.}
+\end{figure}
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch08\_code\_interpreter/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Threat Vectors Inside the Sandbox}
+
+\subsection{DNS Tunneling — Exfiltration Through Allowed UDP}
+An attacker who cannot use HTTP can encode data in DNS query hostnames. DNS port 53 UDP is frequently allowed through firewalls for package installation:
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch08\_code\_interpreter/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\textbf{Mitigation:} Block all outbound UDP port 53 at the hypervisor network layer. Resolve packages using an internal mirror, not the public internet.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch08\_code\_interpreter/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\subsection{CPU Exhaustion via Algorithmic Bombs}
+An LLM could generate code with exponential time complexity (intentionally or accidentally). A simple nested loop can peg a CPU core indefinitely.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch08\_code\_interpreter/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{The VSOCK Execution Protocol}
+
+All communication between the orchestrator and the agent's Python interpreter flows through a Virtio Socket (\texttt{AF\_VSOCK}), which is fully contained within the hypervisor — it does not touch any network interface.
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch08\_code\_interpreter/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+

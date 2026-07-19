@@ -1,0 +1,132 @@
+\documentclass[11pt,a4paper,oneside]{book}
+
+% ==========================================
+% Packages
+% ==========================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb}
+\usepackage{pifont}  % for \ding{51} checkmarks and \ding{55} crosses in tables
+\usepackage{geometry}
+\geometry{margin=1in}
+
+% Colors and Graphics
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, fit, calc, backgrounds}
+
+% Code Formatting
+\usepackage{listings}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% Hyperlinks
+\usepackage{hyperref}
+\usepackage{url}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={The Definitive Guide to Agentic AI},
+}
+
+% ==========================================
+% Document Meta
+% ==========================================
+\title{\textbf{The Practitioner's Handbook of Agentic AI} \\
+\Large From First Principles to Production Systems}
+\author{Jarvis AI Learning Platform}
+\date{\today}
+
+% ==========================================
+% Document Body
+% ==========================================
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+% ==========================================
+% Coding Handbook Reference
+% ==========================================
+\noindent\rule{\textwidth}{0.4pt}
+\vspace{0.5em}
+
+\noindent\textbf{Companion Coding Handbook:} Every chapter in this book has a corresponding runnable code directory in the GitHub repository. Visit the \texttt{coding-handbook/} directory to practice all code examples from each chapter.
+
+\noindent\url{https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook}
+
+\vspace{0.5em}
+\noindent\rule{\textwidth}{0.4pt}
+\newpage
+
+\part{First Principles (The Engine)}
+\input{chapters/chapter_1}
+\input{chapters/chapter_2}
+
+\part{The Agentic Loop}
+\input{chapters/chapter_3}
+\input{chapters/chapter_4}
+
+\part{Memory and Context (The RAG Pipeline)}
+\input{chapters/chapter_5}
+\input{chapters/chapter_6}
+\input{chapters/chapter_7}
+
+\part{Sandboxing and Environments}
+\input{chapters/chapter_8}
+
+\part{Advanced Orchestration}
+\input{chapters/chapter_9}
+\input{chapters/chapter_10}
+
+\part{Modern Agentic SDKs \& AI IDEs}
+\input{chapters/chapter_11}
+\input{chapters/chapter_12}
+
+\part{Production AI for Industry}
+\input{chapters/chapter_13}
+\input{chapters/chapter_19}
+
+\part{The AI Developer's Toolkit}
+\input{chapters/chapter_20}
+
+\part{The Mastery Tier: Evaluation, Observability, and Production}
+\input{chapters/chapter_14}
+\input{chapters/chapter_21}
+\input{chapters/chapter_15}
+\input{chapters/chapter_16}
+\input{chapters/chapter_17}
+\input{chapters/chapter_18}
+
+\appendix
+\input{chapters/appendix_a}
+
+\end{document}

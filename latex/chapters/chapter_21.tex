@@ -1,0 +1,158 @@
+\chapter{How to Evaluate AI: Benchmarks, Metrics, and Human Judgment}
+
+\begin{quote}
+\textit{``A model scores 92\% on HumanEval. Does that mean it can write production code? A model scores 87\% on MMLU. Does that mean it understands medicine? The answer to both is: it depends entirely on what the benchmark actually measures. Most benchmarks measure the ability to solve curated problems in isolation. Production AI operates in open-ended, adversarial, context-dependent environments. The gap between benchmark performance and real-world utility is the single most misunderstood concept in AI evaluation.''}
+\end{quote}
+
+This chapter provides the complete framework for evaluating AI systems: the major benchmarks and what they actually measure, how to build your own evaluation suites, how to use LLM-as-Judge at scale, when human evaluation is irreplaceable, and how to set up continuous evaluation in production.
+
+\section{The Benchmark Landscape}
+
+\subsection{Code Generation Benchmarks}
+
+\begin{center}
+\begin{tabular}{|l|c|p{4.5cm}|l|}
+\hline
+\textbf{Benchmark} & \textbf{Tasks} & \textbf{What It Measures} & \textbf{Metric} \\
+\hline
+HumanEval & 164 & Function-level Python completion from docstrings & pass@k \\
+MBPP & 974 & Simple Python programming problems & pass@k \\
+SWE-bench & 2,294 & Real GitHub issue resolution (full repo context) & \% resolved \\
+SWE-bench Verified & 500 & Human-verified subset of SWE-bench & \% resolved \\
+LiveCodeBench & Rolling & Competitive programming (post-training cutoff) & pass@k \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{Critical distinction:} HumanEval measures \textit{function-level} completion. SWE-bench measures \textit{repository-level} engineering. A model that scores 95\% on HumanEval may score 20\% on SWE-bench, because real software engineering requires reading existing code, understanding architecture, navigating file systems, and running tests --- not just writing functions from docstrings.
+
+\subsection{Reasoning Benchmarks}
+
+\begin{center}
+\begin{tabular}{|l|c|p{5cm}|l|}
+\hline
+\textbf{Benchmark} & \textbf{Tasks} & \textbf{What It Measures} & \textbf{Domain} \\
+\hline
+MMLU & 15,908 & Multiple-choice across 57 academic subjects & General \\
+GPQA & 448 & PhD-level science questions (verified hard) & Science \\
+ARC-Challenge & 1,172 & Grade-school science reasoning & Logic \\
+MATH & 12,500 & Competition mathematics (AMC to AIME level) & Math \\
+GSM8K & 8,500 & Grade-school math word problems & Math \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Agent Benchmarks}
+
+\begin{center}
+\begin{tabular}{|l|p{4.5cm}|l|}
+\hline
+\textbf{Benchmark} & \textbf{What It Measures} & \textbf{Environment} \\
+\hline
+WebArena & Web browsing and interaction tasks & Simulated websites \\
+OSWorld & Desktop OS task completion & Full OS sandbox \\
+SWE-bench & Repository-level code editing & Real GitHub repos \\
+GAIA & General AI assistant tasks & Multi-modal \\
+AgentBench & Multi-domain agent capabilities & Multiple envs \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Running Your Own Evaluations}
+
+\subsection{Building a Custom Evaluation Suite}
+
+The most valuable evaluation is one tailored to your specific use case. Here is a framework for building benchmark suites:
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch21\_evaluating\_ai/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{LLM-as-Judge: Automated Evaluation at Scale}
+
+Manual evaluation of every model output is prohibitively expensive. The state-of-the-art alternative is \textbf{LLM-as-Judge}: using a strong model to evaluate outputs from the model under test.
+
+\subsection{The Judge Calibration Problem}
+
+LLM judges have known biases:
+\begin{enumerate}
+    \item \textbf{Position Bias:} When comparing two outputs, judges prefer the one presented first (or last, depending on the model).
+    \item \textbf{Verbosity Bias:} Judges rate longer responses higher, even when the shorter response is more accurate.
+    \item \textbf{Self-Enhancement Bias:} A GPT-4 judge rates GPT-4 outputs higher than equivalent Claude outputs.
+\end{enumerate}
+
+\textbf{Mitigation:} Use a \textit{different model family} as judge than the model being evaluated. Randomize position order. Use structured rubrics with specific criteria rather than holistic scoring.
+
+\subsection{Multi-Judge Consensus}
+
+For high-stakes evaluations, use multiple judges and measure agreement:
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch21\_evaluating\_ai/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{When Human Evaluation Is Irreplaceable}
+
+LLM-as-Judge fails in several critical scenarios:
+\begin{itemize}
+    \item \textbf{Novel domains:} When the judge model has not been trained on the domain (e.g., evaluating legal contract analysis in a niche jurisdiction).
+    \item \textbf{Subjective quality:} User satisfaction, tone appropriateness, and cultural sensitivity require human judgment.
+    \item \textbf{Safety-critical applications:} Medical, legal, and financial recommendations must be validated by domain experts.
+    \item \textbf{Adversarial robustness:} Detecting subtle manipulations that are designed to fool AI evaluators.
+\end{itemize}
+
+\subsection{Building Evaluation UIs}
+For production human evaluation, build a simple scoring interface that presents outputs blind (without revealing which model generated them) and collects structured ratings:
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch21\_evaluating\_ai/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Continuous Evaluation in Production}
+
+\subsection{Online A/B Testing for Agents}
+Deploy two agent versions simultaneously and measure which one produces better outcomes:
+
+
+\begin{center}
+\noindent\rule{0.6\textwidth}{0.4pt} \\
+\vspace{0.3em}
+\textit{[Code implementation is available in the companion coding handbook: \texttt{coding-handbook/ch21\_evaluating\_ai/}]} \\
+\noindent\rule{0.6\textwidth}{0.4pt}
+\end{center}
+
+
+\section{Safety Benchmarks}
+
+For production AI systems, evaluation must include safety and bias testing:
+
+\begin{center}
+\begin{tabular}{|l|p{4cm}|l|}
+\hline
+\textbf{Benchmark} & \textbf{What It Tests} & \textbf{Metric} \\
+\hline
+TruthfulQA & Resistance to common misconceptions & \% truthful \\
+BBQ & Social bias in ambiguous contexts & Bias score \\
+RealToxicityPrompts & Toxic language generation & Toxicity rate \\
+AdvBench & Resistance to adversarial jailbreaks & Attack success \\
+CyberSecEval & Code security vulnerability generation & Vuln rate \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{The Meta-Question:} How do you evaluate your evaluator? Cross-validate LLM judge scores against a held-out set of human-labeled examples. If the judge's agreement with humans (measured by Cohen's Kappa) drops below 0.6, the judge is unreliable for that task domain and must be recalibrated or replaced with human evaluation.
