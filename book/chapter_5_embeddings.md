@@ -1,6 +1,6 @@
 # Part III: Memory and Context (The RAG Pipeline)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch05_embeddings](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch05_embeddings)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch05_embeddings`](../coding-handbook/ch05_embeddings/)
 # Chapter 5: Embeddings & Asymmetric Search
 
 To understand how an agent queries a massive codebase, you must understand the exact geometry of vector spaces and the distinction between Symmetric and Asymmetric search.

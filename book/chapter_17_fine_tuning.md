@@ -1,6 +1,6 @@
 # Chapter 17: Fine-Tuning Agents for Domain Behaviour
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch17_fine_tuning](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch17_fine_tuning)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch17_fine_tuning`](../coding-handbook/ch17_fine_tuning/)
 
 > "A legal tech company deployed GPT-4o to extract structured data from contracts. The model was excellent at understanding English, but consistently misread their internal contract taxonomy — confusing 'Effective Date' with 'Execution Date,' and 'Counterparty' with 'Licensor.' After three months of prompt engineering with minimal improvement, they switched strategy: they collected 800 correct extraction examples from their own paralegals, trained a fine-tuned version of Llama-3-8B using DPO, and deployed it. The fine-tuned 8B model outperformed GPT-4o on their internal taxonomy by 23 percentage points, and cost 96% less per inference."
 

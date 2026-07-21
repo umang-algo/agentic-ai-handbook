@@ -1,6 +1,6 @@
 # Chapter 11: The Architecture of Modern AI IDEs (Cursor, Claude Code, Canvas)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch11_ai_ides](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch11_ai_ides)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch11_ai_ides`](../coding-handbook/ch11_ai_ides/)
 
 AI coding platforms like Cursor, Claude Code, and ChatGPT Canvas differ from standard code generation APIs. They do not simply write code blocks on demand; they run continuous, background-driven coordination loops that monitor the workspace state, run AST indices, and apply edits directly to active file buffers.
 

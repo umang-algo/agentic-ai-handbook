@@ -1,6 +1,6 @@
 # Chapter 12: The Agentic SDK Landscape: Frameworks & Architectures
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch12_agentic_sdks](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch12_agentic_sdks)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch12_agentic_sdks`](../coding-handbook/ch12_agentic_sdks/)
 
 > "In the early days of LLMs, we wrote raw prompt-response loops and hoped for the best. Today, enterprise agents are built on standardized software development kits (SDKs) that manage conversation state, orchestrate multi-agent collaboration, enforce deterministic execution, and persist memory across service crashes. Choosing the right SDK is not a matter of developer preference --- it is a choice of system architecture."
 

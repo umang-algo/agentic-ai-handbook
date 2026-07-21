@@ -1,6 +1,6 @@
 # Chapter 15: Observability, Tracing, and the Agent Debugger
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch15_observability](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch15_observability)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch15_observability`](../coding-handbook/ch15_observability/)
 
 > "A research team at a fintech company deployed a multi-agent system for automated compliance checks. After two weeks in production, they noticed that 12% of reports were being filed with incorrect risk scores. Debugging was a nightmare: each compliance check involved 6 agents, 40+ LLM calls, and hundreds of tool executions. The logs showed only final outputs — no intermediate states, no timing information, no record of which agent made which decision. The team could not identify the faulty agent without replaying the entire workflow, which was non-deterministic. They were blind. The system had no observability."
 

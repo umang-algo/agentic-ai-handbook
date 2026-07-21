@@ -1,6 +1,6 @@
 # Chapter 19: Production AI Systems — Five Industry Architectures
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch19_production_industries](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch19_production_industries)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch19_production_industries`](../coding-handbook/ch19_production_industries/)
 
 ## Overview
 

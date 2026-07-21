@@ -1,6 +1,6 @@
 # Chapter 21: How to Evaluate AI — Benchmarks, Metrics, and Human Judgment
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch21_evaluating_ai](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch21_evaluating_ai)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch21_evaluating_ai`](../coding-handbook/ch21_evaluating_ai/)
 
 ## Overview
 

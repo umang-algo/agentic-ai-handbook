@@ -1,6 +1,6 @@
 # Chapter 18: End-to-End Project: The GitHub Code Review Agent
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch18_github_agent](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch18_github_agent)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch18_github_agent`](../coding-handbook/ch18_github_agent/)
 
 > "The true test of a system is not whether it works in a demo — it is whether it holds together at 3 AM on a Friday when the oncall engineer is asleep, the CI pipeline has a flaky test, and four developers have pushed PRs simultaneously. Engineering is about systems that work when you are not watching."
 

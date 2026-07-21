@@ -1,6 +1,6 @@
 # Chapter 10: Multi-Agent State Machines (DAGs & Checkpointing)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch10_multi_agent](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch10_multi_agent)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch10_multi_agent`](../coding-handbook/ch10_multi_agent/)
 
 When a workflow requires multiple specialized LLM calls (e.g., Coder -> Reviewer -> Tester -> Deployer), wrapping them in a simple Python `while` loop (as seen in Chapter 3) becomes impossible to debug. The state becomes entangled, and failure recovery is nonexistent.
 

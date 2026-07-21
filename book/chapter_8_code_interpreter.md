@@ -1,6 +1,6 @@
 # Part IV: Sandboxing and Environments
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch08_code_interpreter](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch08_code_interpreter)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch08_code_interpreter`](../coding-handbook/ch08_code_interpreter/)
 # Chapter 8: The Code Interpreter (MicroVMs & Firecracker)
 
 Allowing an LLM to execute arbitrary Python code is fundamentally dangerous. Standard Docker containers are inadequate because they share the underlying Linux kernel with the host. A kernel exploit from AI-generated code could compromise the entire server rack.
@@ -13,10 +13,10 @@ Firecracker provides KVM-based virtualization. Each Agent session gets its own d
 
 ```mermaid
 graph TD
-    subgraph Host OS (Bare Metal Server)
+    subgraph SG1 ["Host OS (Bare Metal Server)"]
         A[KVM /dev/kvm]
         
-        subgraph MicroVM Process (Agent Session)
+        subgraph SG2 ["MicroVM Process (Agent Session)"]
             B[Firecracker VMM]
             C[Guest Kernel]
             D[Python Interpreter executing AI Code]

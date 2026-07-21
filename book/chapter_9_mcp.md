@@ -1,6 +1,6 @@
 # Chapter 9: The Model Context Protocol (JSON-RPC & STDIO)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch09_mcp](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch09_mcp)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch09_mcp`](../coding-handbook/ch09_mcp/)
 
 The Model Context Protocol (MCP) solves the N-to-N integration problem in Agentic AI. 
 

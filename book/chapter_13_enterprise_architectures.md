@@ -1,6 +1,6 @@
 # Chapter 13: Enterprise Architectures & Solution Design
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch13_enterprise_architectures](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch13_enterprise_architectures)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch13_enterprise_architectures`](../coding-handbook/ch13_enterprise_architectures/)
 
 Traditional software struggles with unstructured inputs (e.g. emails, logs). Agents solve this by acting as translators between unstructured data and structured code executions. 
 

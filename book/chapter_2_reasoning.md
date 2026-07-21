@@ -1,6 +1,6 @@
 # Chapter 2: From Completion to Reasoning (Statistical Manipulation)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch02_reasoning](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch02_reasoning)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch02_reasoning`](../coding-handbook/ch02_reasoning/)
 
 An LLM is a statistical engine. It outputs a probability distribution over its vocabulary (e.g., 100,277 tokens) indicating the likelihood of the next token. 
 

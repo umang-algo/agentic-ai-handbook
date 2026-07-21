@@ -1,6 +1,6 @@
 # Chapter 20: AI Harness Tools — Mastering the Agentic Developer Toolkit
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch20_ai_harness_tools](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch20_ai_harness_tools)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch20_ai_harness_tools`](../coding-handbook/ch20_ai_harness_tools/)
 
 ## Overview
 

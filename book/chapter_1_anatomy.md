@@ -1,6 +1,6 @@
 # Chapter 1: The Anatomy of an LLM (Architectural Deep Dive)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch01_llm_anatomy](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch01_llm_anatomy)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch01_llm_anatomy`](../coding-handbook/ch01_llm_anatomy/)
 
 To build deterministic, production-grade Agentic AI, you must stop treating the LLM as a "black box" intelligence and start treating it as what it is: a highly complex, hardware-bound statistical inference engine.
 
@@ -16,7 +16,7 @@ graph TD
     B --> C[Positional Encoding]
     C --> D[Residual Connection Addition]
     
-    subgraph Transformer Block (Repeated N times, e.g. 96 layers)
+    subgraph SG1 ["Transformer Block (Repeated N times, e.g. 96 layers)"]
         D --> E[Layer Normalization]
         E --> F[Multi-Head Masked Self-Attention]
         F --> G[Residual Add]

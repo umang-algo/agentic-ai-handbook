@@ -1,6 +1,6 @@
 # Chapter 7: Context Assembly (Token Budgeting & Speculative Decoding)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch07_context_assembly](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch07_context_assembly)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch07_context_assembly`](../coding-handbook/ch07_context_assembly/)
 
 Cursor is widely considered the best AI IDE in the world. Its secret is not a magical foundational model (it uses the same Claude 3.5 Sonnet available to everyone). Its secret is the **Orchestrator Backend**, which dynamically assembles a context window optimized to the exact token limit.
 
@@ -8,19 +8,19 @@ Cursor is widely considered the best AI IDE in the world. Its secret is not a ma
 
 ```mermaid
 graph TD
-    subgraph Client (VS Code Fork)
+    subgraph SG1 ["Client (VS Code Fork)"]
         A[Active File Editor]
         B[Diagnostics/Linter]
         C[Recent Terminal Output]
     end
 
-    subgraph Orchestrator (Backend)
+    subgraph SG2 ["Orchestrator (Backend)"]
         D[Token Budget Allocator]
         E[RAG Engine / Vector Search]
         F[Prompt Compiler]
     end
 
-    subgraph Inference (LLM)
+    subgraph SG3 ["Inference (LLM)"]
         G[Claude 3.5 / GPT-4o]
     end
 

@@ -1,6 +1,6 @@
 # Chapter 6: Building a Vector Database (HNSW & AST)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch06_vector_db](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch06_vector_db)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch06_vector_db`](../coding-handbook/ch06_vector_db/)
 
 In Chapter 5, we calculated memory for vectors. If you have 10 million vectors, computing the exact Cosine Similarity for every single vector sequentially ($O(N)$) for every user prompt will take seconds or minutes. 
 
@@ -12,17 +12,17 @@ HNSW works similarly to a Skip List combined with a social network graph.
 
 ```mermaid
 graph TD
-    subgraph Layer 2 (Highest - Entry Point)
+    subgraph SG1 ["Layer 2 (Highest - Entry Point)"]
         A((Entry))
     end
     
-    subgraph Layer 1 (Medium Granularity)
+    subgraph SG2 ["Layer 1 (Medium Granularity)"]
         A --> B
         A --> C
         B --> D
     end
     
-    subgraph Layer 0 (Base Layer - All Vectors)
+    subgraph SG3 ["Layer 0 (Base Layer - All Vectors)"]
         B --> E
         B --> F
         C --> G

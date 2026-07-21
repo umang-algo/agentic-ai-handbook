@@ -1,6 +1,6 @@
 # Chapter 14: Agent Evaluation & Red-Teaming
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch14_evaluation](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch14_evaluation)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch14_evaluation`](../coding-handbook/ch14_evaluation/)
 
 > "You cannot improve what you cannot measure. In 2024, a team at a major enterprise deployed an AI procurement agent. In demos, it worked flawlessly. In production, it had a silent failure rate of 34%: one in three purchase orders either targeted the wrong vendor, specified the wrong quantity, or failed to apply contractual discounts. The team had been measuring the wrong thing — they measured 'did the agent respond?' not 'was the response correct?' They had a success metric, not an accuracy metric."
 

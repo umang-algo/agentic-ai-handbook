@@ -1,6 +1,6 @@
 # Chapter 4: Tool Calling (Native Architecture & AsyncIO)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch04_tool_calling](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch04_tool_calling)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch04_tool_calling`](../coding-handbook/ch04_tool_calling/)
 
 Native Tool Calling (Function Calling) is not just a UI convenience; it is a structural change in how the LLM computes output. In Chapter 2, we discussed Logit Bias. Native Tool Calling uses similar exact-schema enforcement mechanisms on the inference provider's backend.
 

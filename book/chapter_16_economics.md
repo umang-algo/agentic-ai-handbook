@@ -1,6 +1,6 @@
 # Chapter 16: Production Economics & Latency Engineering
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch16_economics](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch16_economics)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch16_economics`](../coding-handbook/ch16_economics/)
 
 > "A startup built a beautiful multi-agent customer support system. It could handle complex queries, retrieve relevant policies, escalate to specialists, and draft professional responses. In the beta, users loved it. Then they ran the numbers. Each query cost \$0.47 on average — across 800 support tickets a day, that was \$11,000 per month in API costs, compared to \$3,200 per month for the human agents they were replacing. The agent was technically superior and economically unviable. They had solved the AI problem and failed the business problem."
 

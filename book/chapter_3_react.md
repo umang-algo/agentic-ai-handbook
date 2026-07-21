@@ -1,6 +1,6 @@
 # Chapter 3: The ReAct Paradigm (Network & Execution Architecture)
 
-> 📝 **Coding Handbook**: Practice the code from this chapter → [GitHub: ch03_react](https://github.com/umang/agentic-ai-handbook/tree/main/coding-handbook/ch03_react)
+> 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch03_react`](../coding-handbook/ch03_react/)
 
 The ReAct (Reasoning and Acting) loop is the central nervous system of an agent. It is a stateful, iterative execution cycle that connects the LLM's statistical logic to deterministic, real-world tools.
 
