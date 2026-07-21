@@ -2,50 +2,87 @@
 
 > 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch15_observability`](../coding-handbook/ch15_observability/)
 
-> "A research team at a fintech company deployed a multi-agent system for automated compliance checks. After two weeks in production, they noticed that 12% of reports were being filed with incorrect risk scores. Debugging was a nightmare: each compliance check involved 6 agents, 40+ LLM calls, and hundreds of tool executions. The logs showed only final outputs — no intermediate states, no timing information, no record of which agent made which decision. The team could not identify the faulty agent without replaying the entire workflow, which was non-deterministic. They were blind. The system had no observability."
+Debugging a traditional monolith requires inspecting stack traces. Debugging a multi-agent system requires tracing non-deterministic trajectories across dozens of LLM calls, tool executions, and state transitions. Without structured observability, diagnosing why an agent failed or hallucinates becomes impossible.
 
+---
 
-Observability is not debugging. Debugging is what you do when something has already gone wrong. Observability is the engineering infrastructure that lets you understand *why* something went wrong, without having to reproduce the failure. For agentic systems, this requires traces, metrics, and logs — structured, correlated, and agent-aware.
+## 15.1 Distributed Tracing with OpenTelemetry Spans
 
-## The Three Pillars of Agentic Observability
+In production agentic architectures, every step in a ReAct loop or multi-agent state graph is wrapped in an **OpenTelemetry (OTEL) Trace Span**:
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agent as Agent Orchestrator
+    participant OTEL as OTEL Collector
+    participant LLM as Model Provider
+    participant DB as Vector Database
 
+    User->>Agent: Send Query Request
+    activate Agent
+    Agent->>OTEL: Start Root Trace: "agent_trajectory_run"
+    
+    Agent->>DB: Query Embeddings (Span: "vector_search")
+    DB-->>Agent: Return Context Chunks
+    
+    Agent->>LLM: Post Prompt (Span: "llm_inference")
+    LLM-->>Agent: Return Action Proposal
+    
+    Agent->>OTEL: Record Token Usage & Latency
+    deactivate Agent
+```
 
-## OpenTelemetry for Agents: Distributed Tracing
+### Essential Trace Span Attributes:
+- `agent.step_number`: Iteration index within trajectory.
+- `llm.prompt_tokens`: Count of input context tokens.
+- `llm.completion_tokens`: Count of generated output tokens.
+- `llm.time_to_first_token_ms`: TTFT latency.
+- `agent.action_name`: Name of invoked tool call.
 
-OpenTelemetry (OTel) is the CNCF standard for distributed tracing. A *trace* represents the complete journey of one user request through your system. A *span* represents a single unit of work within that trace.
+---
 
-For an agentic system, the trace spans an entire agent run, with child spans for each LLM call, tool execution, and memory retrieval.
+## 15.2 Key Latency & Token Metrics (Prometheus)
 
+Production agent telemetry relies on four core metrics tracked in Prometheus:
 
-*Architecture diagram visualizable in the companion handbook implementation.*
+1. **Time-to-First-Token (TTFT)**: Latency from HTTP request start to the arrival of the first generated token stream chunk.
+2. **Tokens-Per-Second (TPS)**: Throughput speed of generation:
+   $$\text{TPS} = \frac{N_{\text{tokens}}}{\Delta t_{\text{generation}}}$$
+3. **Trajectory Step Count**: Number of ReAct loops executed before reaching `<Final>` answer.
+4. **Token Cost per Trajectory**: Cumulative USD cost incurred.
 
+---
 
+## 15.3 Shannon Entropy for Agent Uncertainty Debugging
 
+When an agent becomes uncertain, its output token probability distribution flattens. We calculate **Shannon Entropy** over token logit probabilities to detect agent confusion or hallucination risk in real-time:
 
+### Mathematical Definition
+$$H(X) = -\sum_{i=1}^N P(x_i) \log_2 P(x_i)$$
 
+```python
+import math
 
-## The "Lost in the Middle" Failure Pattern
+def calculate_token_entropy(token_probabilities: list[float]) -> float:
+    """
+    Calculates Shannon Entropy (bits).
+    Low entropy (<1.5): Confident decision.
+    High entropy (>2.5): Agent is uncertain/hallucinating.
+    """
+    entropy = 0.0
+    for p in token_probabilities:
+        if p > 0.0:
+            entropy -= p * math.log2(p)
+    return round(entropy, 4)
+```
 
-Research by Liu et al. (2023) demonstrated that LLMs show a U-shaped performance curve over long contexts: they attend well to information at the beginning and end of a prompt, but systematically ignore information in the middle. This is one of the most dangerous silent failures in production RAG-based agents.
+---
 
-### Detecting It: Attention Weight Analysis
-When debugging an agent that fails to use context that you *know* is in the prompt, you can extract attention weights from an open-source model (Llama-3) to visualize where the model's attention is focused.
+## 15.4 Agent Trajectory Debugging Checklist
 
+When investigating an agent failure in production:
 
-
-
-
-**The mitigation** is active context ordering: place the most critical context (the exact fact the agent needs to answer correctly) either at the very beginning or very end of the prompt — never bury it in the middle. This structural rule is more reliable than any prompt engineering trick.
-
-## Metrics That Actually Matter in Production
-
-
-
-
-
-**Alert rules to configure:** 
-
-    - `agent_task\{outcome="failure"\` / agent_task_total > 0.15} — 15% failure rate is a P1 incident
-    - P95 of `agent_llm_latency_seconds > 10` — degraded inference service
-    - P95 of `agent_cost_usd > 1.0` — cost per task has blown out
+1. **Check TTFT vs TPS**: If TTFT is high, context size is too large (KV Cache bottleneck). If TPS is low, model generation bandwidth is constrained.
+2. **Check Action Hashes**: Verify if the loop detection guardrail was triggered due to duplicate action proposals.
+3. **Inspect Tool Payload**: Verify if raw JSON tool arguments match expected OpenAPI Pydantic schemas.
+4. **Evaluate Token Entropy**: Identify steps where token entropy spikes above $2.5$ bits to pinpoint hallucination sources.

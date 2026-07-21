@@ -1,40 +1,63 @@
-# Chapter 20: AI Harness Tools — Mastering the Agentic Developer Toolkit
+# Chapter 20: AI Harness Tools: Mastering the Agentic Developer Toolkit
 
 > 📝 **Coding Handbook**: Practice the code from this chapter → [`coding-handbook/ch20_ai_harness_tools`](../coding-handbook/ch20_ai_harness_tools/)
 
-## Overview
+> *"In 2023, the best AI coding tool was a chat window. By mid-2025, developers have access to over a dozen autonomous coding agents — some run in IDEs, some in terminals, some in fully sandboxed cloud environments. They all share a common architecture: a ReAct loop, a context engine, a diff applicator, and a permission model."*
 
-A practitioner's field guide to every major AI coding tool in the agentic ecosystem. For each tool: what it does, how it works under the hood, strengths, weaknesses, and when to use it.
+This chapter provides an architectural taxonomy of modern AI developer tools (Cursor, Claude Code, Aider, Devin).
 
-## Tools Covered
+---
 
-| Tool | Type | Developer | Open Source |
-|------|------|-----------|-------------|
-| **Cursor** | IDE (VS Code fork) | Anysphere | No |
-| **Claude Code** | CLI terminal agent | Anthropic | No |
-| **GitHub Copilot** | IDE extension + cloud | GitHub/Microsoft | No |
-| **Windsurf** | IDE (VS Code fork) | Codeium | No |
-| **Aider** | CLI pair programmer | Paul Gauthier | Yes |
-| **Roo Code** | VS Code extension | Community | Yes |
-| **Cline** | VS Code extension | Community | Yes |
-| **Continue** | VS Code/JetBrains ext | Continue.dev | Yes |
-| **OpenHands** | Autonomous SWE agent | All Hands AI | Yes |
-| **Devin** | Cloud autonomous agent | Cognition | No |
-| **Amazon Q** | IDE extension + CLI | AWS | No |
+## 20.1 Architectural Taxonomy
 
-## The Common Architecture Pattern
+We classify the ecosystem into three core paradigms:
 
-All agentic coding tools share a universal architecture:
+```mermaid
+graph TD
+    A[AI Coding Tool Taxonomy] --> B[IDE-Integrated Clients]
+    A --> C[CLI-Native Terminal Agents]
+    A --> D[Sandboxed Cloud Agents]
 
-1. **Context Engine** — Index + Retrieve relevant code
-2. **LLM Reasoning** — ReAct loop for multi-step planning
-3. **Diff Applicator** — Myers / Search-Replace for code edits
-4. **Permission Gate** — User approval for actions
-5. **Tool Executor** — Terminal, browser, filesystem access
-6. **Observe + Loop** — Self-correction cycle
+    B --> B1[Cursor / Windsurf]
+    C --> C1[Claude Code / Aider]
+    D --> D1[Devin / OpenHands]
+```
 
-Understanding this shared architecture (covered in Chapters 3, 7, 8, 9, and 11) lets you evaluate any new tool that enters the market.
+1. **IDE-Integrated Clients (e.g. Cursor)**: Deeply integrated into the editor process buffer. Uses local AST tree-sitter indices and speculative inline completion models for $<100$ms latency.
+2. **CLI-Native Terminal Agents (e.g. Claude Code, Aider)**: Git-native agents running in the developer's terminal. Uses extended thinking tokens and client-side command verification prompts.
+3. **Sandboxed Cloud Agents (e.g. Devin)**: Executes inside isolated remote cloud containers (MicroVMs). High latency, but supports fully autonomous background execution.
 
-## Key Takeaway
+---
 
-> The tools differ in **implementation quality** of each component, **user experience** design, and **deployment model** (local vs. cloud) — not in fundamental architecture.
+## 20.2 Deep Dive: 4 Major Developer Tools
+
+### 1. Cursor: Deep IDE Integration & Myers Diff Engine
+- **Context Indexing**: Parses symbols into an AST using tree-sitter combined with BM25 lexical search.
+- **Diff Engine**: Computes shortest edit scripts via an optimized variant of the Myers Diff Algorithm.
+- **Permission Model**: Staged inline code diffs rendered in active editor buffers.
+
+### 2. Claude Code: CLI-Native Thinking & Command Verification
+- **Context Indexing**: Extended thinking tokens + file search + local git status.
+- **Diff Engine**: Line-level unified patch applicator.
+- **Permission Model**: Client-side terminal prompts requesting user confirmation before running destructive bash commands.
+
+### 3. Aider: Git-Native Pair Programming & Repository Mapping
+- **Context Indexing**: Generates a **Repository Map** using `universal-ctags` to extract class definitions and function signatures across all files.
+- **Diff Engine**: Streamed git commits and patch blocks.
+- **Permission Model**: Automatic local git commits for easy rollback (`git reset`).
+
+### 4. Devin: Sandboxed Cloud SWE Agent
+- **Context Indexing**: Full workspace index in remote cloud MicroVM.
+- **Diff Engine**: Container-isolated git patch execution.
+- **Permission Model**: Cloud sandbox security boundary.
+
+---
+
+## 20.3 Comparative Architectural Matrix
+
+| Tool | Paradigm | Indexing Strategy | Diff Engine | Latency (ms) | Context Efficiency |
+|------|----------|-------------------|-------------|--------------|--------------------|
+| **Cursor** | IDE-Integrated | Tree-sitter AST + BM25 | Speculative Myers Diff | ~120 ms | High |
+| **Claude Code** | CLI-Native | Extended Thinking + Search | Line Patch Applicator | ~850 ms | High |
+| **Aider** | CLI-Native | Universal Ctags Repo Map | Git Commit Streamer | ~300 ms | Extreme |
+| **Devin** | Cloud-Sandboxed | Cloud MicroVM Index | Container Patch | ~2,500 ms | High |

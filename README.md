@@ -18,7 +18,6 @@
 
 - ⚡ **[CHEATSHEET.md](./CHEATSHEET.md)**: 1-Page Agentic AI Visual Quick-Reference Card (KV Cache math, ReAct loop traps, HNSW vs Flat, MCP lifecycles).
 - 🧠 **[INTERVIEW_PREP.md](./INTERVIEW_PREP.md)**: 50 Top System Design & Architecture Questions for AI Engineers & LLM Researchers.
-- 🚀 **[LAUNCH_KIT.md](./LAUNCH_KIT.md)**: Open-Source Promotion & Launch Copy for Hacker News, Reddit, Twitter/X, and LinkedIn.
 - 📄 **[agentic_ai_book.pdf](./agentic_ai_book.pdf)**: Download the compiled 91-page conceptual handbook PDF.
 
 ---
