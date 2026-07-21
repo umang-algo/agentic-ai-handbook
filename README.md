@@ -4,14 +4,22 @@
   <img src="cover.png" width="450" alt="The Practitioner's Guide to Agentic AI Book Cover">
 </p>
 
+<p align="center">
+  <a href="https://github.com/umang-algo/agentic-ai-handbook/stargazers"><img src="https://img.shields.io/github/stars/umang-algo/agentic-ai-handbook?style=for-the-badge&color=8A2BE2" alt="GitHub Stars"></a>
+  <a href="https://github.com/umang-algo/agentic-ai-handbook/blob/main/LICENSE"><img src="https://img.shields.io/github/license/umang-algo/agentic-ai-handbook?style=for-the-badge&color=blue" alt="License"></a>
+  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.11+-green.svg?style=for-the-badge&logo=python" alt="Python 3.11+"></a>
+  <a href="https://github.com/umang-algo/agentic-ai-handbook"><img src="https://img.shields.io/badge/Chapters-21%20Markdown-orange?style=for-the-badge" alt="21 Chapters"></a>
+  <a href="https://github.com/umang-algo/agentic-ai-handbook/tree/main/coding-handbook"><img src="https://img.shields.io/badge/Code%20Labs-59%20Python%20Modules-brightgreen?style=for-the-badge" alt="59 Labs"></a>
+</p>
+
 ---
 
-## 📖 Access the Book
+## ⚡ Quick Resources & Cheat Cards
 
-Read the full book directly on GitHub in **Markdown (`book/`)** or download the compiled PDF:
-
-- 📚 **Markdown Chapters (`book/`)**: Read online directly in GitHub (see chapter index below).
-- 📄 **Compiled PDF**: 👉 **[Download agentic_ai_book.pdf](./agentic_ai_book.pdf)**
+- ⚡ **[CHEATSHEET.md](./CHEATSHEET.md)**: 1-Page Agentic AI Visual Quick-Reference Card (KV Cache math, ReAct loop traps, HNSW vs Flat, MCP lifecycles).
+- 🧠 **[INTERVIEW_PREP.md](./INTERVIEW_PREP.md)**: 50 Top System Design & Architecture Questions for AI Engineers & LLM Researchers.
+- 🚀 **[LAUNCH_KIT.md](./LAUNCH_KIT.md)**: Open-Source Promotion & Launch Copy for Hacker News, Reddit, Twitter/X, and LinkedIn.
+- 📄 **[agentic_ai_book.pdf](./agentic_ai_book.pdf)**: Download the compiled 91-page conceptual handbook PDF.
 
 ---
 
@@ -56,6 +64,9 @@ python main.py test
 ```bash
 ├── book/                # Complete 21-chapter book in Markdown (.md)
 ├── agentic_ai_book.pdf  # Compiled 91-page book (PDF)
+├── CHEATSHEET.md        # 1-page visual quick-reference card
+├── INTERVIEW_PREP.md    # 50 System Design Interview Questions
+├── LAUNCH_KIT.md        # Promotion & launch templates (HN, Reddit, X)
 ├── cover.png            # Front cover art
 └── coding-handbook/     # Companion Python implementations & labs
     ├── main.py          # Master interactive CLI & lab runner
@@ -112,6 +123,12 @@ python main.py test
 | **Ch 19** | Production AI for 5 Industries | [chapter_19_production_industries.md](./book/chapter_19_production_industries.md) | [`ch19_production_industries/`](./coding-handbook/ch19_production_industries/) |
 | **Ch 20** | AI Harness Tools | [chapter_20_ai_harness_tools.md](./book/chapter_20_ai_harness_tools.md) | [`ch20_ai_harness_tools/`](./coding-handbook/ch20_ai_harness_tools/) |
 | **Ch 21** | How to Evaluate AI | [chapter_21_evaluating_ai.md](./book/chapter_21_evaluating_ai.md) | [`ch21_evaluating_ai/`](./coding-handbook/ch21_evaluating_ai/) |
+
+---
+
+## 📈 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=umang-algo/agentic-ai-handbook&type=Date)](https://star-history.com/#umang-algo/agentic-ai-handbook&Date)
 
 ---
 
