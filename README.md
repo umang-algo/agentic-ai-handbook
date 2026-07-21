@@ -19,9 +19,35 @@ Read the full book directly on GitHub in **Markdown (`book/`)** or download the 
 
 Welcome to the definitive companion repository for **The Practitioner's Guide to Agentic AI** by **Umang Yadav & Antigravity**. 
 
-This repository implements a **dual-track learning framework**:
+This repository implements a **multi-track learning & engineering framework**:
 1. **Conceptual & Architectural Track (`book/` & `agentic_ai_book.pdf`)**: All 21 chapters covering deep learning internals, cyclic execution models, sandboxed virtual environments, distributed tracing, economics, fine-tuning alignment, and interview prep.
-2. **Hands-on Lab Track (`coding-handbook/`)**: Self-contained, runnable Python code files implementing the core algorithms discussed in the book.
+2. **Hands-on Lab Track (`coding-handbook/`)**: 59 self-contained, runnable Python code files implementing the core algorithms discussed in the book.
+3. **Multi-Persona Engineering Tracks**:
+   - 🎓 **Students**: Zero-config offline execution via built-in `MockLLMProvider`, clear mental models, and step-by-step walkthroughs.
+   - 🔬 **Researchers**: Empirical benchmarks (VRAM math, attention entropy, HNSW search complexity $O(\log N)$ vs $O(N)$, LoRA rank trade-offs), equations, and experiment harnesses.
+   - 🚀 **AI Engineers**: Async design patterns, fault-tolerant retries, model cost/latency routers, streaming JSON parsers, and enterprise safety guardrails.
+
+---
+
+## 💻 Master Interactive CLI Launcher
+
+Run any chapter lab, launch empirical benchmarks, or execute the full 59-module test suite from a single terminal launcher:
+
+```bash
+cd coding-handbook
+
+# List all 21 chapters & 59 code modules
+python main.py list
+
+# Run interactive lab for a chapter (e.g. ch01, ch03, ch19)
+python main.py run ch01
+
+# Run empirical benchmark experiments
+python main.py bench ch06
+
+# Run automated verification across all 59 code modules
+python main.py test
+```
 
 ---
 
@@ -32,8 +58,10 @@ This repository implements a **dual-track learning framework**:
 ├── agentic_ai_book.pdf  # Compiled 91-page book (PDF)
 ├── cover.png            # Front cover art
 └── coding-handbook/     # Companion Python implementations & labs
+    ├── main.py          # Master interactive CLI & lab runner
     ├── README.md        # Lab index and quickstart guide
     ├── requirements.txt # Python dependencies
+    ├── common/          # Shared utilities (logger, offline mock LLM, metrics)
     ├── ch01_llm_anatomy/
     ├── ch02_reasoning/
     ├── ch03_react/
@@ -84,29 +112,6 @@ This repository implements a **dual-track learning framework**:
 | **Ch 19** | Production AI for 5 Industries | [chapter_19_production_industries.md](./book/chapter_19_production_industries.md) | [`ch19_production_industries/`](./coding-handbook/ch19_production_industries/) |
 | **Ch 20** | AI Harness Tools | [chapter_20_ai_harness_tools.md](./book/chapter_20_ai_harness_tools.md) | [`ch20_ai_harness_tools/`](./coding-handbook/ch20_ai_harness_tools/) |
 | **Ch 21** | How to Evaluate AI | [chapter_21_evaluating_ai.md](./book/chapter_21_evaluating_ai.md) | [`ch21_evaluating_ai/`](./coding-handbook/ch21_evaluating_ai/) |
-
----
-
-## 🛠️ Quick Start
-
-To run the Python labs inside the `coding-handbook/`:
-
-```bash
-# Clone the repository
-git clone https://github.com/umang-algo/agentic-ai-handbook.git
-cd agentic-ai-handbook/coding-handbook
-
-# Create and activate a virtual environment
-python3 -m venv .venv && source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Export your API keys (required for LLM integrations)
-export OPENAI_API_KEY="your-key"
-export ANTHROPIC_API_KEY="your-key"
-export GITHUB_TOKEN="your-token"
-```
 
 ---
 

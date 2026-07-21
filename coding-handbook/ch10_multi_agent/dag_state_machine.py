@@ -1,14 +1,22 @@
 """
 Chapter 10: Multi-Agent DAG State Machine Orchestrator
 ======================================================
-Production DAG multi-agent state machine orchestrating tasks across specialized agents with checkpointing.
+Production DAG multi-agent state machine orchestrator managing graph execution,
+conditional branching, and state checkpoint recovery.
 
 From: The Practitioner's Handbook of Agentic AI, Chapter 10.1
 """
 
+import os
+import sys
 import json
 from dataclasses import dataclass, field, asdict
 from typing import Dict, Any, List, Optional, Callable
+
+# Add coding-handbook root to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from common.logger import AgentLogger, Colors
 
 
 @dataclass
@@ -51,24 +59,28 @@ class DAGStateMachine:
             if not next_nodes:
                 state.completed = True
             else:
-                # Transition to next DAG node
                 state.current_node = next_nodes[0]
 
         return state
 
 
-if __name__ == "__main__":
+def run_multi_agent_demo():
+    AgentLogger.title("Multi-Agent DAG State Machine Execution")
+
     dag = DAGStateMachine(start_node="Router")
 
     def router_node(state: WorkflowState) -> WorkflowState:
-        state.context_data["router_decision"] = "Write Python Code"
+        AgentLogger.info("[Node: Router] Classifying user prompt intent...")
+        state.context_data["router_decision"] = "Write Python Function"
         return state
 
     def coder_node(state: WorkflowState) -> WorkflowState:
-        state.context_data["code"] = "def hello(): return 'World'"
+        AgentLogger.info("[Node: Coder Agent] Generating python code block...")
+        state.context_data["code"] = "def calculate_fibonacci(n):\n    return n if n <= 1 else calculate_fibonacci(n-1) + calculate_fibonacci(n-2)"
         return state
 
     def reviewer_node(state: WorkflowState) -> WorkflowState:
+        AgentLogger.info("[Node: Reviewer Agent] Validating syntax and performance...")
         state.context_data["review_status"] = "PASSED"
         return state
 
@@ -79,6 +91,13 @@ if __name__ == "__main__":
     dag.add_edge("Router", "Coder")
     dag.add_edge("Coder", "Reviewer")
 
-    final_state = dag.run("thread_101", {"user_prompt": "Create hello function"})
-    print("DAG Execution State History:", final_state.history)
-    print("Final State Output Data:", json.dumps(final_state.context_data, indent=2))
+    final_state = dag.run("thread_101", {"user_prompt": "Write fibonacci function"})
+    
+    AgentLogger.section("State Trajectory Summary")
+    print(f"Graph Path Traversed: {' -> '.join(final_state.history)}")
+    print(f"Review Status:        {final_state.context_data.get('review_status')}")
+    AgentLogger.success("DAG Multi-Agent state execution completed.")
+
+
+if __name__ == "__main__":
+    run_multi_agent_demo()

@@ -1,115 +1,65 @@
 """
-Chapter 1: KV Cache Memory Calculator
+Chapter 1: KV Cache & VRAM Calculator
 ======================================
-Calculate the exact VRAM requirements for the KV Cache of any LLM
-architecture. This is the hard infrastructure constraint that determines
-how much context your agent can actually use.
+Production VRAM and KV Cache memory footprint calculator for LLM inference.
+Calculates weights VRAM, KV Cache VRAM, and total memory footprint across model architectures,
+context lengths (4k to 1M tokens), and quantization precisions (FP16, INT8, INT4).
 
 From: The Practitioner's Handbook of Agentic AI, Chapter 1.2
 """
 
+import sys
+import os
+from dataclasses import dataclass
 
-def calculate_kv_cache_per_token(
-    num_layers: int,
-    num_heads: int,
-    head_dim: int,
-    precision_bytes: int = 2,  # FP16/BF16 = 2 bytes, FP32 = 4 bytes
-) -> float:
-    """
-    Calculate KV cache memory per token in bytes.
+# Add coding-handbook root to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-    Formula: 2 × num_layers × num_heads × head_dim × precision_bytes
-    (2 accounts for storing both K and V matrices)
-    """
-    return 2 * num_layers * num_heads * head_dim * precision_bytes
+from common.logger import AgentLogger, Colors
+from common.metrics import calculate_model_vram, VRAMEstimate
 
 
-def calculate_total_kv_cache(
-    num_layers: int,
-    num_heads: int,
-    head_dim: int,
-    context_length: int,
-    precision_bytes: int = 2,
-    batch_size: int = 1,
-) -> dict:
-    """
-    Calculate total KV cache memory for a given context length.
-
-    Returns a dict with memory in bytes, MB, and GB.
-    """
-    per_token = calculate_kv_cache_per_token(
-        num_layers, num_heads, head_dim, precision_bytes
-    )
-    total_bytes = per_token * context_length * batch_size
-
-    return {
-        "per_token_bytes": per_token,
-        "per_token_mb": per_token / (1024 ** 2),
-        "total_bytes": total_bytes,
-        "total_mb": total_bytes / (1024 ** 2),
-        "total_gb": total_bytes / (1024 ** 3),
-    }
+@dataclass
+class ModelProfile:
+    name: str
+    params_b: float
+    num_layers: int
+    hidden_dim: int
+    num_heads: int
 
 
-# ─── Well-known model configurations ────────────────────────────────────────
+def run_kv_cache_benchmark():
+    AgentLogger.title("KV Cache & VRAM Footprint Empirical Benchmark")
 
-MODEL_CONFIGS = {
-    "Llama-3-70B": {
-        "num_layers": 80,
-        "num_heads": 64,
-        "head_dim": 128,
-    },
-    "Llama-3-8B": {
-        "num_layers": 32,
-        "num_heads": 32,
-        "head_dim": 128,
-    },
-    "GPT-4o (estimated)": {
-        "num_layers": 120,
-        "num_heads": 96,
-        "head_dim": 128,
-    },
-    "Claude-3.5 Sonnet (estimated)": {
-        "num_layers": 80,
-        "num_heads": 64,
-        "head_dim": 128,
-    },
-    "Gemini-1.5 Pro (estimated)": {
-        "num_layers": 64,
-        "num_heads": 48,
-        "head_dim": 256,
-    },
-}
+    models = [
+        ModelProfile("Llama-3-8B", 8.0, 32, 4096, 32),
+        ModelProfile("Llama-3-70B", 70.0, 80, 8192, 64),
+        ModelProfile("DeepSeek-R1-671B", 671.0, 128, 14336, 128),
+    ]
+
+    contexts = [4096, 32768, 131072, 1048576]
+    precisions = [("FP16", 16), ("INT8", 8), ("INT4", 4)]
+
+    for model in models:
+        AgentLogger.section(f"Model Architecture: {model.name} ({model.params_b}B Parameters)")
+        for ctx in contexts:
+            for prec_name, prec_bits in precisions:
+                vram = calculate_model_vram(
+                    params_b=model.params_b,
+                    context_tokens=ctx,
+                    precision_bits=prec_bits,
+                    num_layers=model.num_layers,
+                    hidden_dim=model.hidden_dim,
+                    num_heads=model.num_heads
+                )
+                print(
+                    f"  Ctx: {ctx:>7,d} tok | Precision: {prec_name:>4} -> "
+                    f"Weights: {vram.weights_vram_gb:>6.1f} GB | "
+                    f"KV Cache: {vram.kv_cache_vram_gb:>6.1f} GB | "
+                    f"{Colors.BOLD}Total: {vram.total_vram_gb:>6.1f} GB{Colors.ENDC}"
+                )
+        print()
 
 
 if __name__ == "__main__":
-    print("=" * 72)
-    print("KV Cache Memory Calculator — Agentic AI Infrastructure Planning")
-    print("=" * 72)
-
-    context_lengths = [4_096, 32_000, 128_000, 200_000, 1_000_000]
-
-    for model_name, config in MODEL_CONFIGS.items():
-        print(f"\n{'─' * 72}")
-        print(f"Model: {model_name}")
-        print(f"  Layers={config['num_layers']}, "
-              f"Heads={config['num_heads']}, "
-              f"HeadDim={config['head_dim']}")
-        print(f"  {'Context':>12}  {'Per Token':>12}  {'Total KV Cache':>15}")
-
-        for ctx_len in context_lengths:
-            result = calculate_total_kv_cache(
-                context_length=ctx_len,
-                **config
-            )
-            print(
-                f"  {ctx_len:>12,}  "
-                f"{result['per_token_mb']:.4f} MB  "
-                f"{result['total_gb']:>12.1f} GB"
-            )
-
-    print(f"\n{'─' * 72}")
-    print("\n⚠️  Agentic Implication:")
-    print("   Context Assembly (Chapter 7) is NOT just about prompt quality.")
-    print("   It is a HARD INFRASTRUCTURE CONSTRAINT.")
-    print("   Sending irrelevant files to the LLM will OOM your servers.")
+    run_kv_cache_benchmark()

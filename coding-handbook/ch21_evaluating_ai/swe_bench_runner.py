@@ -7,9 +7,16 @@ git diff patch application, unit test execution, and resolution pass rates.
 From: The Practitioner's Handbook of Agentic AI, Chapter 21.1
 """
 
+import os
+import sys
 import json
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
+
+# Add coding-handbook root to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from common.logger import AgentLogger, Colors
 
 
 @dataclass
@@ -74,7 +81,6 @@ class SWEBenchRunner:
                 error_message="Empty patch produced by model."
             )
 
-        # Check if patch addresses key change pattern
         if any(keyword in generated_patch for keyword in ["\\A", "ComplexInfinity"]):
             return EvaluationResult(
                 instance_id=instance.instance_id,
@@ -93,6 +99,7 @@ class SWEBenchRunner:
 
     def run_benchmark(self, model_patches: Dict[str, str]) -> Dict[str, Any]:
         """Runs evaluation over all benchmark instances and calculates resolution percentage."""
+        AgentLogger.title("SWE-bench Repo-Level Patch Evaluation Runner")
         results = []
         resolved_count = 0
 
@@ -100,24 +107,25 @@ class SWEBenchRunner:
             patch = model_patches.get(instance.instance_id, "")
             res = self.evaluate_patch(instance, patch)
             results.append(res)
+            
+            status_str = f"{Colors.OKGREEN}RESOLVED{Colors.ENDC}" if res.resolved else f"{Colors.FAIL}FAILED{Colors.ENDC}"
+            print(f"[{status_str}] Task: {instance.instance_id} ({instance.repo})")
+
             if res.resolved:
                 resolved_count += 1
 
         total = len(self.benchmark_instances)
         pass_rate = (resolved_count / total * 100.0) if total > 0 else 0.0
 
+        AgentLogger.section("SWE-bench Benchmark Summary")
+        print(f"Total Repositories Tested: {total}")
+        print(f"Resolved Count:           {resolved_count}")
+        print(f"{Colors.BOLD}Resolution Pass Rate:     {pass_rate:.1f}%{Colors.ENDC}")
+
         return {
             "total_instances": total,
             "resolved_count": resolved_count,
-            "resolution_pass_rate_percent": round(pass_rate, 2),
-            "instance_results": [
-                {
-                    "instance_id": r.instance_id,
-                    "resolved": r.resolved,
-                    "passed_tests": r.passed_tests,
-                    "failed_tests": r.failed_tests
-                } for r in results
-            ]
+            "resolution_pass_rate_percent": round(pass_rate, 2)
         }
 
 
@@ -128,6 +136,4 @@ if __name__ == "__main__":
         "sympy__sympy-13480": "if arg == 0: return ComplexInfinity"
     }
 
-    report = runner.run_benchmark(sample_model_patches)
-    print("SWE-bench Evaluation Results:")
-    print(json.dumps(report, indent=2))
+    runner.run_benchmark(sample_model_patches)

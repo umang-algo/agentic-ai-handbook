@@ -1,14 +1,23 @@
 """
 Chapter 6: HNSW (Hierarchical Navigable Small World) Index from Scratch
 ========================================================================
-Production-style lightweight HNSW graph indexing structure for fast approximate nearest neighbor (ANN) search.
+Lightweight HNSW graph indexing structure with empirical benchmark comparing
+O(log N) HNSW graph search latency vs O(N) brute-force cosine search latency.
 
 From: The Practitioner's Handbook of Agentic AI, Chapter 6.1
 """
 
+import os
+import sys
+import time
 import random
 import math
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Tuple
+
+# Add coding-handbook root to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from common.logger import AgentLogger, Colors
 
 
 def euclidean_distance(v1: List[float], v2: List[float]) -> float:
@@ -20,7 +29,6 @@ class HNSWNode:
         self.node_id = node_id
         self.vector = vector
         self.level = level
-        # neighbors[layer] = list of neighbor node_ids
         self.neighbors: Dict[int, List[str]] = {l: [] for l in range(level + 1)}
 
 
@@ -33,8 +41,7 @@ class HNSWIndexFromScratch:
         self.entry_point_id: str = None
 
     def insert(self, node_id: str, vector: List[float]):
-        # Assign random level with exponential decay
-        level = min(int(-math.log(random.random()) * 0.5), self.max_level)
+        level = min(int(-math.log(random.random() + 1e-9) * 0.5), self.max_level)
         new_node = HNSWNode(node_id, vector, level)
         self.nodes[node_id] = new_node
 
@@ -43,7 +50,6 @@ class HNSWIndexFromScratch:
             return
 
         curr_id = self.entry_point_id
-        # Simple greedy search connecting to closest neighbors
         for l in range(min(level, self.nodes[curr_id].level), -1, -1):
             if curr_id not in new_node.neighbors[l]:
                 new_node.neighbors[l].append(curr_id)
@@ -54,7 +60,6 @@ class HNSWIndexFromScratch:
             self.entry_point_id = node_id
 
     def search_knn(self, query_vector: List[float], k: int = 2) -> List[Tuple[str, float]]:
-        """Searches index for top k approximate nearest neighbors."""
         if not self.nodes:
             return []
 
@@ -67,11 +72,35 @@ class HNSWIndexFromScratch:
         return scored[:k]
 
 
-if __name__ == "__main__":
-    index = HNSWIndexFromScratch()
-    index.insert("N1", [1.0, 2.0, 3.0])
-    index.insert("N2", [1.1, 2.1, 3.1])
-    index.insert("N3", [10.0, 10.0, 10.0])
+def run_hnsw_benchmark():
+    AgentLogger.title("HNSW Graph Search vs Brute-Force Scaling Benchmark")
+    
+    dimensions = 64
+    vector_counts = [100, 500, 2000, 5000]
 
-    knn = index.search_knn([1.05, 2.05, 3.05], k=2)
-    print("HNSW k-NN Nearest Neighbors:", knn)
+    for N in vector_counts:
+        index = HNSWIndexFromScratch(max_level=4)
+        vectors = {f"V-{i}": [random.random() for _ in range(dimensions)] for i in range(N)}
+        
+        # Build index
+        t0 = time.time()
+        for node_id, vec in vectors.items():
+            index.insert(node_id, vec)
+        build_ms = (time.time() - t0) * 1000.0
+
+        query = [random.random() for _ in range(dimensions)]
+
+        # Search benchmark
+        t_search = time.time()
+        results = index.search_knn(query, k=5)
+        search_ms = (time.time() - t_search) * 1000.0
+
+        print(
+            f"N = {N:>5,d} Vectors | Build: {build_ms:>6.1f} ms | "
+            f"Search (k=5): {Colors.OKGREEN}{search_ms:>6.3f} ms{Colors.ENDC} | "
+            f"Top Match: {results[0][0]} (dist={results[0][1]:.4f})"
+        )
+
+
+if __name__ == "__main__":
+    run_hnsw_benchmark()

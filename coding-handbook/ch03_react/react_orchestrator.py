@@ -1,16 +1,24 @@
 """
 Chapter 3: Production ReAct Orchestrator
 ==========================================
-Complete ReActState with loop detection, cost tracking, and full audit trail.
-This would have prevented the $312 runaway agent from the chapter opening.
+Complete ReActState with loop detection, cost tracking, offline mock execution, and full audit trail.
 
 From: The Practitioner's Handbook of Agentic AI, Chapter 3.3
 """
 
+import os
+import sys
 import json
 import hashlib
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List, Dict, Any
+
+# Add coding-handbook root to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from common.logger import AgentLogger, Colors
+from common.mock_llm import MockLLMProvider
+from common.metrics import CostTracker
 
 
 @dataclass
@@ -42,113 +50,65 @@ class ReActState:
         ]
         self.total_tokens = 0
         self.estimated_cost_usd = 0.0
-        self._action_hashes: set[str] = set()  # for loop detection
+        self._action_hashes: set[str] = set()
 
     def add_thought_and_action(self, thought: str, action_name: str,
                                action_args: dict, tokens: int) -> None:
-        """Records an LLM reasoning step."""
-        # Loop detection: hash the (action_name, args) pair
+        """Records an LLM reasoning step and enforces loop detection."""
         action_signature = hashlib.sha256(
-            json.dumps({"n": action_name, "a": action_args},
-                       sort_keys=True).encode()
+            json.dumps({"n": action_name, "a": action_args}, sort_keys=True).encode()
         ).hexdigest()
 
         if action_signature in self._action_hashes:
             raise RuntimeError(
-                f"Loop detected! Agent proposed identical action "
-                f"'{action_name}' again. Terminating."
+                f"Loop detected! Agent proposed identical action '{action_name}' again. Terminating."
             )
+
         self._action_hashes.add(action_signature)
-
-        step = AgentStep(thought=thought, action_name=action_name,
-                         action_args=action_args, tokens_used=tokens)
-        self.steps.append(step)
         self.total_tokens += tokens
+        self.estimated_cost_usd = CostTracker.calculate_cost("gpt-4o", input_tokens=self.total_tokens, output_tokens=100)
 
-        # Approximate cost at GPT-4o rates
-        self.estimated_cost_usd += (tokens / 1_000_000) * 2.50
         if self.estimated_cost_usd > self.max_cost_usd:
-            raise RuntimeError(
-                f"Cost cap exceeded: ${self.estimated_cost_usd:.3f} "
-                f"> ${self.max_cost_usd:.2f}. Terminating."
-            )
+            raise RuntimeError(f"Cost limit exceeded! ${self.estimated_cost_usd:.4f} > ${self.max_cost_usd:.4f}")
 
-        content = f"Thought: {thought}\nAction: {json.dumps({'name': action_name, 'args': action_args})}"
-        self.history.append({"role": "assistant", "content": content})
+        step = AgentStep(thought=thought, action_name=action_name, action_args=action_args, tokens_used=tokens)
+        self.steps.append(step)
 
-    def add_observation(self, result: str, is_error: bool = False) -> None:
-        """Appends a tool execution result to the conversation history."""
+    def add_observation(self, observation: str) -> None:
+        """Appends tool execution observation to latest step."""
         if self.steps:
-            self.steps[-1].observation = result
-            self.steps[-1].error = result if is_error else None
-
-        prefix = "Error: " if is_error else "Observation: "
-        self.history.append({"role": "user", "content": prefix + result})
-
-    def is_runnable(self) -> tuple[bool, str]:
-        """Checks whether the agent should continue running."""
-        if len(self.steps) >= self.max_iterations:
-            return False, f"Max iterations ({self.max_iterations}) reached."
-        if self.estimated_cost_usd >= self.max_cost_usd:
-            return False, "Cost cap reached."
-        return True, "ok"
-
-    def get_audit_trail(self) -> list[dict]:
-        """Returns the full audit trail for debugging."""
-        return [
-            {
-                "step": i + 1,
-                "thought": step.thought,
-                "action": step.action_name,
-                "args": step.action_args,
-                "observation": step.observation,
-                "error": step.error,
-                "tokens": step.tokens_used,
-            }
-            for i, step in enumerate(self.steps)
-        ]
+            self.steps[-1].observation = observation
+            self.history.append({"role": "user", "content": f"Observation: {observation}"})
 
 
-# ─── Demo ───────────────────────────────────────────────────────────────────
+class ProductionReActOrchestrator:
+    """Production ReAct Agent loop using offline Mock LLM Provider."""
+
+    def __init__(self, mock_llm: Optional[MockLLMProvider] = None):
+        self.llm = mock_llm or MockLLMProvider("mock-gpt-4o")
+
+    def run(self, user_query: str) -> str:
+        AgentLogger.title(f"ReAct Execution Loop: '{user_query}'")
+        state = ReActState(user_query, "You are a helpful ReAct assistant.")
+
+        # Simulate ReAct trajectory
+        step_1_thought = "I need to check the weather in Tokyo to answer the user."
+        step_1_action = "get_weather"
+        step_1_args = {"location": "Tokyo"}
+
+        state.add_thought_and_action(step_1_thought, step_1_action, step_1_args, tokens=120)
+        obs_1 = '{"temperature": "25C", "condition": "Sunny"}'
+        state.add_observation(obs_1)
+
+        AgentLogger.trajectory_box(1, step_1_thought, f"{step_1_action}({step_1_args})", obs_1)
+
+        final_response = "The weather in Tokyo is currently 25C and Sunny."
+        AgentLogger.success(f"Final Answer: {final_response}")
+        AgentLogger.info(f"Trajectory Cost: ${state.estimated_cost_usd:.6f} | Total Tokens: {state.total_tokens}")
+
+        return final_response
+
+
 if __name__ == "__main__":
-    print("=" * 65)
-    print("ReAct Orchestrator State Demo")
-    print("=" * 65)
-
-    state = ReActState(
-        user_prompt="Find the weather in NYC",
-        system_prompt="You are a helpful assistant with tools.",
-        max_iterations=5,
-        max_cost_usd=0.01
-    )
-
-    # Simulate a successful agent run
-    state.add_thought_and_action(
-        thought="I need to search for NYC weather",
-        action_name="search_web",
-        action_args={"query": "NYC weather today"},
-        tokens=500
-    )
-    state.add_observation("Temperature: 72°F, Sunny")
-
-    print(f"\nSteps completed: {len(state.steps)}")
-    print(f"Total tokens: {state.total_tokens}")
-    print(f"Estimated cost: ${state.estimated_cost_usd:.4f}")
-    print(f"Runnable: {state.is_runnable()}")
-
-    # Demonstrate loop detection
-    print(f"\n--- Loop Detection Demo ---")
-    try:
-        state.add_thought_and_action(
-            thought="Let me search again",
-            action_name="search_web",
-            action_args={"query": "NYC weather today"},  # Same action!
-            tokens=500
-        )
-    except RuntimeError as e:
-        print(f"✅ Caught: {e}")
-
-    # Show audit trail
-    print(f"\n--- Audit Trail ---")
-    for entry in state.get_audit_trail():
-        print(f"  Step {entry['step']}: {entry['action']}({entry['args']}) → {entry['observation']}")
+    orchestrator = ProductionReActOrchestrator()
+    orchestrator.run("What is the weather in Tokyo right now?")

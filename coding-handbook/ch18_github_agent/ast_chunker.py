@@ -6,7 +6,7 @@ cleanly at function or class definitions, preserving scope context.
 """
 
 import ast
-from typing import List, Dict
+from typing import List, Dict, Any
 
 class ASTCodeChunker:
     @staticmethod

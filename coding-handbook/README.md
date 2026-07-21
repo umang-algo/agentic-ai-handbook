@@ -6,25 +6,44 @@ Every chapter of the book has a corresponding code directory here with **runnabl
 
 ---
 
-## 🚀 Quick Start
+## 🌟 Interactive Master CLI Launcher
+
+Launch any lab, run empirical benchmark experiments, or execute the full test suite with the master CLI tool:
 
 ```bash
-# Clone the repo
-git clone https://github.com/umang/agentic-ai-handbook.git
+# Navigate to coding-handbook
 cd agentic-ai-handbook/coding-handbook
 
-# Create a virtual environment
-python3 -m venv .venv && source .venv/bin/activate
+# List all 21 chapters & code modules
+python main.py list
 
-# Install dependencies
-pip install -r requirements.txt
+# Run interactive lab for a chapter (e.g. ch01, ch03, ch19)
+python main.py run ch01
 
-# Set your API keys
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
+# Run empirical benchmark experiments (e.g. HNSW scaling, VRAM math)
+python main.py bench ch06
+
+# Run automated verification across all 59 code modules
+python main.py test
 ```
 
-**Requirements:** Python 3.11+ | API keys for OpenAI / Anthropic (for LLM chapters)
+---
+
+## 🎯 3-Tier Learning Framework
+
+This handbook is designed for three distinct personas:
+
+- 🎓 **Students**: Core mental models, step-by-step code walkthroughs, and zero-config offline execution via our built-in `MockLLMProvider`.
+- 🔬 **Researchers**: Mathematical formulations, empirical benchmarking (VRAM math, attention entropy, HNSW search complexity $O(\log N)$ vs $O(N)$, LoRA rank trade-offs), and experiment harnesses.
+- 🚀 **AI Engineers**: Production async design patterns, fault-tolerant retry loops, model cost/latency routers, streaming JSON parsers, and enterprise safety guardrails.
+
+---
+
+## 🛠️ Shared Core Utilities (`coding-handbook/common/`)
+
+- [`common/logger.py`](./common/logger.py): Rich terminal formatting with ANSI colors, execution timers, and formatted trajectory boxes.
+- [`common/mock_llm.py`](./common/mock_llm.py): Deterministic, 100% offline Mock LLM provider supporting tool calling, reasoning tokens (`<thought>`), streaming, and simulated latency.
+- [`common/metrics.py`](./common/metrics.py): VRAM memory calculator (Weights + KV Cache), TTFT/TPS latency measures, and token cost accounting.
 
 ---
 
