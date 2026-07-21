@@ -2,9 +2,20 @@
 
 > 📖 **Book Chapter**: [Chapter 20 — AI Harness Tools](../../book/chapter_20_ai_harness_tools.md)
 
-## Files
-| File | Description |
-|------|-------------|
-| `tool_comparison_matrix.py` | Generates a comparison matrix of all AI coding tools |
+Architectural analysis and evaluation framework for modern AI developer tools (Cursor, Claude Code, Aider, Devin).
 
-This chapter is primarily a reference guide. The code here is a utility to help you compare and evaluate different AI harness tools.
+---
+
+## 🛠️ Included Code Modules
+
+| Module | Description | Key Metrics |
+|--------|-------------|-------------|
+| [`tool_comparison_matrix.py`](./tool_comparison_matrix.py) | Developer Harness Tool Comparative Matrix | Indexing strategy, diff engine, latency, context efficiency |
+
+---
+
+## 🚀 Running the Examples
+
+```bash
+python3 tool_comparison_matrix.py
+```

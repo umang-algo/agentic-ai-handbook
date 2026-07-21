@@ -36,7 +36,6 @@ latex/book.synctex(busy)
 
 # Untracked source folders and website files
 /latex/
-/book/
 /public/
 /src/
 /index.html
